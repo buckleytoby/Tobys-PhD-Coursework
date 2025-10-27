@@ -66,7 +66,7 @@ class DataLoader:
     def __init__(self,
                  test=TEST,
                  max_nb_pts = None,
-                 percentage = None
+                 percentage = 1.0
                  ):
         self.test = test
         self.max_nb_pts = max_nb_pts
@@ -196,7 +196,7 @@ class MotionModel:
             assert(len(self.variance) == len(self.state))
             self.gaus = scipy.stats.multivariate_normal(
                 mean=np.zeros_like(self.state),
-                cov=np.diag(self.variance),
+                cov=np.diag(self.variance), #type:ignore
                 allow_singular=True
             )
         else:
@@ -361,9 +361,9 @@ class Cell:
     def cost(self):
         # if it's not occupied, or hasn't yet been explored
         if not self.occupied or self.unexplored:
-            return 1.0
+            return 1.0 * self.width
         else:
-            return 1000.0
+            return 1000.0 * self.width
         
     def __lt__(self, other):
         # used as a tie-breaker
@@ -415,7 +415,16 @@ class Cell:
     def center(self):
         return np.array([self.x1 + 0.5 * self.width, self.y1 + 0.5 * self.height])
 
+    def copy(self):
+        """
+        no neighbors in the copy
+        """
+        c = Cell(self.x, self.y, self.width, unexplored=self.unexplored)
 
+        return c
+
+
+DL = DataLoader(TEST)
 
 class Map:
     def __init__(self,
@@ -426,8 +435,7 @@ class Map:
         self.cell_width = cell_width
         self.object_width = object_width
 
-        dl = DataLoader(TEST)
-        self.landmarks = dl["Landmark_Groundtruth"]
+        self.landmarks = DL["Landmark_Groundtruth"]
 
     def set_unexplored(self):
         for key, cell in self.cells.items():
@@ -449,11 +457,12 @@ class Map:
         ax.set_aspect('equal', adjustable='box')
 
 
-        cell: Cell = None
+        cell: Cell
         for key, cell in self.cells.items():
             if cell.occupied and not cell.unexplored:
+                x, y = cell.xy
                 # ref: https://stackoverflow.com/questions/37435369/how-to-draw-a-rectangle-on-image
-                rect = patches.Rectangle(cell.xy, self.cell_width, self.cell_width, fill=True, color=random_color())
+                rect = patches.Rectangle((x, y), self.cell_width, self.cell_width, fill=True, color=random_color())
                 ax.add_patch(rect)
 
         return f
@@ -507,7 +516,7 @@ class Map:
 
         self.cells[(xr, yr)] = cell
 
-    def get_cell(self, xr, yr) -> Cell:
+    def get_cell(self, xr, yr) -> Cell | None:
         xr = real_to_grid(xr, self.cell_width)
         yr = real_to_grid(yr, self.cell_width)
 
@@ -551,6 +560,23 @@ class Map:
 
             c.neighbors = n
 
+    def copy(self):
+        """
+        for a copy (used for state history), we just need the cells and whether they were explored, no neighbors needed
+        """
+        m = Map(self.cell_width, self.object_width)
+
+        m.cells = {key: cell.copy() for key, cell in self.cells.items()}
+
+        m.minx = self.minx
+        m.maxx = self.maxx
+        m.miny = self.miny
+        m.maxy = self.maxy
+        m.xrange = self.xrange
+        m.yrange = self.yrange
+
+        return m
+
 
 class Node(Cell):
     pass
@@ -573,11 +599,11 @@ class Astar:
     def set_map(self, map: Map):
         self.map = map
 
-    def plan_(self) -> list[Node]:
+    def plan_(self) -> list[Node] | None:
         # setup
         s: Node = self.s #type:ignore
         g: Node = self.g #type:ignore
-        node: Node
+        node = Node(0, 0)
 
         assert(s is not None)
         assert(g is not None)
@@ -600,23 +626,26 @@ class Astar:
 
         # euclidean distance
         def heuristic(node: Node):
-            h = np.linalg.norm(node.xy - g.xy)
+            h = np.linalg.norm(node.center - g.center)
             return h
 
         done = False
         print("A*: begin planning...")
         c = 0
         while not done:
-            c += 1
-            if c%100==0:
-                print("Evaluated {} nodes.".format(c))
-                print("node ", node.xy, " goal: ", g.xy)
             # get most promising node
             if not open_set.empty():
                 prio, node = open_set.get()
             else:
                 break
             closed_set[node] = True
+
+            d = heuristic(node)
+
+            c += 1
+            if c%100==0:
+                print("Evaluated {} nodes.".format(c))
+                print("node ", node.xy, " goal: ", g.xy)
 
             # check if it's goal
             if node.equal(g):
@@ -646,6 +675,7 @@ class Astar:
 
         if not node.equal(g):
             print("A* couldn't find a plan")
+            return None
         else:
             print("A* plan found.")
 
@@ -686,6 +716,17 @@ class Astar:
 
             plt.arrow(x, y, dx, dy, width=0.05, color=random_color())
     
+    def copy(self):
+        """
+        only need to copy stuff for plotting
+        """
+        a = Astar()
+
+        if self.plan is not None:
+            a.plan = [node.copy() for node in self.plan]
+        
+        return a
+
 
 
     
@@ -743,7 +784,7 @@ class Robot:
             f = plt.figure()
 
         ax = plt.gca()
-        circle = patches.Circle(self.xy, self.radius, fill=True, color=random_color())
+        circle = patches.Circle(tuple(self.xy), self.radius, fill=True, color=random_color())
         ax.add_patch(circle)
         
     def plot_history(self, f=None):
@@ -925,7 +966,7 @@ class GridRobot(Robot):
         
         self.set_xy(node.xy)
         
-    def drive(self, plan, reset=False):
+    def drive(self, plan, reset=False, eps=0.0):
         # go directly to final location
         n = plan[-1]
         self.step(n)
@@ -993,7 +1034,8 @@ class OnlinePlanning:
 
         pass
 
-    def run(self, S: Node, G: Node):
+    def run(self, start: Node, G: Node):
+        S = start
         # set up an online run
         self.robot.reset(S)
         map: Map = self.true_map # copy.deepcopy(self.true_map)
@@ -1004,7 +1046,9 @@ class OnlinePlanning:
         self.h = []
 
         def save_state():
-            self.h.append((copy.deepcopy(self.true_map), copy.deepcopy(self.robot), copy.deepcopy(self.planner)))
+            h_map = self.true_map.copy()
+            h_plan = self.planner.copy()
+            self.h.append((h_map, copy.deepcopy(self.robot), h_plan))
 
         # save initial state
         save_state()
@@ -1018,7 +1062,11 @@ class OnlinePlanning:
                 print("online planner status", S.xy, G.xy)
             # construct S
             x, y = self.robot.xy
-            S: Node | Cell = map.get_cell(x, y)
+            S = map.get_cell(x, y)
+
+            if S is None:
+                print("Something went wrong...")
+                raise
 
             # check if done
             if S.equal(G):
@@ -1031,13 +1079,16 @@ class OnlinePlanning:
             # plan
             plan = self.planner.plan_()
 
+            if plan is None:
+                raise
+
             # take the first non-start action -- idx = 1
             # a = self.get_action(plan[1])
             a = plan[1]
 
             # execute
-            # eps should be half the cell width
-            eps = self.true_map.cell_width / 2.0
+            # eps should be less than half the cell width
+            eps = self.true_map.cell_width / 2.0 - 1e-3
             self.robot.drive([a], reset=False, eps=eps)
 
             # take an observation
@@ -1208,7 +1259,9 @@ def q7(plot=True):
         # executing
         astar.set_start(S)
         astar.set_goal(G)
-        p: list[Node] = astar.plan_()
+        p = astar.plan_()
+
+        assert(p is not None)
 
         if plot:
             # plot map
@@ -1304,10 +1357,10 @@ def q11():
         pass
 
     # iterate over cell widths
-    for cell_width in [0.1, 1.0]:
+    for cell_width in [0.1]:
         
         # iterate over q3 goals
-        for i in range(len(sg)):
+        for i in [0]: # range(len(sg)):
             
             # make the map
             map = Map(cell_width=cell_width)
