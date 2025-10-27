@@ -505,7 +505,7 @@ class Map:
         """
 
         # ex:
-        xys = self.landmarks[:, 1:3]
+        xys = self.landmarks[:, 1:3] # all landmarks, only x, y
         for x, y in xys:
             if cell.contains(x, y, self.object_width):
                 cell.set_occupied(True)
@@ -543,6 +543,8 @@ class Map:
                 c += 1
                 # if c%5==0:
                 #     print(c)
+                
+        print("nb cells: {}".format(len(self.cells.keys())))
 
         self.make_all_neighbors()
 
@@ -555,6 +557,10 @@ class Map:
             n = self.make_neighbors(c) # xr, yr)
 
             if c is None:
+                print("something went wrong.")
+                raise
+            
+            if len(n) == 0:
                 print("something went wrong.")
                 raise
 
@@ -1378,13 +1384,13 @@ def main():
 
     # q5()
 
-    # q7()
+    q7()
     
     # q9()
     
     # q10()
     
-    q11()
+    # q11()
 
     input("press any key")
 
