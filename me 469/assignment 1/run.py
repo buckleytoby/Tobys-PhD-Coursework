@@ -224,7 +224,7 @@ class MotionModel:
         dx = v * math.cos(self.theta)
         dy = v * math.sin(self.theta)
 
-        grad = np.array([dt, dx, dy, dtheta, 0.0, 0.0])
+        grad = np.array([dt, dx, dy, dtheta])
         return grad
 
     def propagate(self, dt, u):
@@ -286,6 +286,47 @@ class MotionModel:
 
     def get_state(self):
         return self.state
+    
+    def plot_history_xy(self, prefix="Robot History", fig2 = None):
+        h = np.array(self.get_history())
+
+        # extract the history
+        t = h[:, 0]
+        x = h[:, 1]
+        y = h[:, 2]
+        theta = h[:, 3]
+
+        # plot 2 - birds-eye view: x vs y
+        width = 0.005
+        my_label = "Birds-eye-view"
+        fig2 = plotbirdseye(prefix, "_nolegend_", x, y, theta, width=width, fig2 = fig2)
+        fig2.show()
+        
+    def plot_history(self, prefix="Robot History", gt=None, fig=None):
+
+        h = self.get_history()
+
+        # extract the history
+        t = h[:, 0]
+        x = h[:, 1]
+        y = h[:, 2]
+        theta = h[:, 3]
+
+        # plotting
+        nb_non_time_state_vars = 3 # h.shape[1] - 1
+        names = ["x", "y", "theta"]
+
+        # plot 1 - t vs all state variables
+        fig1, axes = plt.subplots(nb_non_time_state_vars)
+        
+        # iterate over all non-time state variables
+        for i in range(nb_non_time_state_vars):
+            axes[i].plot(t, h[:, i+1], color="purple", alpha=0.5)
+            axes[i].set_ylabel(names[i])
+
+        plt.xlabel("Time (s)")
+        plt.suptitle(prefix + ": Time History of State Variables")
+        fig1.show()
     
 
 
@@ -499,7 +540,7 @@ class Map:
     def make_all_neighbors(self):
         # for xr in self.xrange:
         #     for yr in self.yrange:
-        c: Cell = None
+        c: Cell = None #type:ignore
         for key, c in self.cells.items():
             xr, yr = c.xy
             n = self.make_neighbors(c) # xr, yr)
@@ -523,7 +564,7 @@ class Astar:
         # members
         self.plan = None
 
-    def set_start(self, s: Node):
+    def set_start(self, s: Node | Cell):
         self.s = s
 
     def set_goal(self, g: Node):
@@ -532,10 +573,10 @@ class Astar:
     def set_map(self, map: Map):
         self.map = map
 
-    def plan_(self):
+    def plan_(self) -> list[Node]:
         # setup
-        s: Node = self.s
-        g: Node = self.g
+        s: Node = self.s #type:ignore
+        g: Node = self.g #type:ignore
         node: Node
 
         assert(s is not None)
@@ -659,7 +700,7 @@ def range_bearing(xy1, theta, xy2):
     range = np.linalg.norm(s)
 
     # output in [-pi, pi]
-    theta_landmark = np.atan2(s[1], s[0])
+    theta_landmark = np.arctan2(s[1], s[0])
 
     # wrap to [-pi, pi]
     theta2 = wrap(theta)
@@ -669,16 +710,17 @@ def range_bearing(xy1, theta, xy2):
 
     return range, heading
 
+NNN = 1e-2
 class Robot:
     def __init__(self,
-                 mm: MotionModel = MotionModel(state0=[0.0, 0.0, 0.0, -np.pi/2.0]),
+                 mm: MotionModel = MotionModel(state0=[0.0, 0.0, 0.0, -np.pi/2.0], variance=[0.0, NNN, NNN, NNN]),
                  max_accel = 0.288,
                  max_alpha = 5.579,
                  dt = 0.1,
                  v0 = 0.0,
                  w0 = 0.0,
-                 kv = 1.0,
-                 kw = 1.0,
+                 kv = 0.5,
+                 kw = 0.5,
                  obs_range = 1.0,
                  ):
         self.mm = mm
@@ -703,8 +745,15 @@ class Robot:
         ax = plt.gca()
         circle = patches.Circle(self.xy, self.radius, fill=True, color=random_color())
         ax.add_patch(circle)
+        
+    def plot_history(self, f=None):
+        self.mm.plot_history(fig=f)
+        self.mm.plot_history_xy(fig2=f)
+        
+    def plot_history_xy(self, f=None):
+        self.mm.plot_history_xy(fig2=f)
 
-    def get_state(self) -> tuple[float, float]:
+    def get_state(self) -> np.ndarray:
         return self.mm.get_state()[1:4]
     
     def get_grid_xy(self, grid_width) -> tuple[int, int]:
@@ -720,26 +769,45 @@ class Robot:
         return x, y, self.obs_range
     
     def controller(self, G) -> tuple[float, float]:
-        gx, gy = G
+        gx, gy = G.center
 
         # simple proportional controller
-        x, y, theta = self.get_state()
+        x, y, theta = self.get_state() #type:ignore
         
         range, heading = range_bearing([x, y], theta, [gx, gy])
+        
+        # check if rotating the opposite way is shorter
+        rot_ccw = heading + 2 * np.pi
+        rot_cw = heading - 2 * np.pi
+        if abs(rot_ccw) < abs(heading):
+            heading = rot_ccw
+        if abs(rot_cw) < abs(heading):
+            heading = rot_cw
 
         v = self.kv * range
         w = self.kw * heading
 
-        return v, w
+        return v, w #type:ignore
     
     @property
     def xy(self):
         return self.get_state()[0:2]
+    
+    def reset(self, node):
+        # always reset to zero time and -pi/2 theta
+        x, y = node.center
+        state = [0.0, x, y, -np.pi/2.0]
+        
+        self.mm = MotionModel(state0=state, variance=[0.0, NNN, NNN, NNN])
 
-    def step(self, G):
+    def step(self, G: Node):
+        """
+        state vars: (x, y, th)
+        cmd vars: (v, w)
+        """
         v, w = self.controller(G)
 
-
+        # delta-cmd, diff between desired and current
         vd = v - self.v
         wd = w - self.w
 
@@ -753,11 +821,66 @@ class Robot:
         # update vel
         self.v += vd
         self.w += wd
+        
+        # take a step in the mm
+        t = self.mm.t + self.dt
+        cmd = [t, self.v, self.w]
+        self.mm.step(cmd)
 
-    def drive(self, plan):
+    def drive(self, plan: list[Node], reset=True, eps=5e-1):
         """
         drive through a plan
         """
+        
+        # assertions
+        # assert(len(plan) > 1) # at least 2 nodes, start and goal
+        
+        # method vars
+        done = False
+        eps = 5e-1 # units: m
+        idx = 0
+        
+        # get first node
+        node = plan[idx]
+        goal = plan[-1]
+        
+        # reset robot
+        if reset:
+            self.reset(node)
+        
+        print("Starting from {}".format(self.xy))
+        print("Driving to {}".format(plan[-1].center))
+        count = 0
+        while not done:
+            # check proximity
+            dist = np.linalg.norm(self.xy - node.center) #type:ignore
+            close_enough = dist < eps
+                
+            # check for goal
+            if node == goal and close_enough:
+                # we're done
+                break
+            
+            # close enough and not at the goal --> next node
+            if close_enough:
+                # move to next node
+                idx += 1
+                node = plan[idx]
+                print("New goal: {}".format(node.center))
+                
+            # diverging
+            if dist > 2.0:
+                pass
+                
+            # drive to node
+            self.step(node)
+            
+            # progress
+            count += 1
+            if count%100 == 0:
+                print("dist: {}".format(dist))
+        print("Done driving to {}".format(plan[-1].center))
+        
         pass
 
 class GridRobot(Robot):
@@ -778,13 +901,14 @@ class GridRobot(Robot):
         x, y = self.get_state()
         return x, y, self.obs_range
     
-    def step(self, G):
+    def step(self, G: Node):
         """
         G - goal
         grid robot achieves its goal automatically
         """
-        self.x = G[0]
-        self.y = G[1]
+        x, y = G.center
+        self.x = x
+        self.y = y
 
     def get_state(self):
         return np.array([self.x, self.y])
@@ -795,14 +919,30 @@ class GridRobot(Robot):
     
     def set_xy(self, xy):
         self.x, self.y = xy
+        
+    def reset(self, node):
+        x, y = node.center
+        
+        self.set_xy(node.xy)
+        
+    def drive(self, plan, reset=False):
+        # go directly to final location
+        n = plan[-1]
+        self.step(n)
+        
+    def plot_history_xy(self, f=None):
+        """
+        no history for grid robot, only current xy
+        """
+        self.plot(f=f)
 
 
 
 class OnlinePlanning:
     def __init__(self,
-                 true_map: Map = None,
-                 planner: Astar = None,
-                 robot: Robot = None,
+                 true_map: Map = None, #type:ignore
+                 planner: Astar = None, #type:ignore
+                 robot: Robot = None, #type:ignore
     ):
         self.true_map = true_map
         self.planner = planner
@@ -853,18 +993,9 @@ class OnlinePlanning:
 
         pass
 
-    def get_action(self, node: Node):
-        xy = node.xy
-        x, y = xy
-        myxy = self.robot.xy
-        myxy = np.array([real_to_grid(myxy[0], self.true_map.cell_width), real_to_grid(myxy[1], self.true_map.cell_width)])
-
-        dxy = xy - myxy
-        return dxy
-
     def run(self, S: Node, G: Node):
         # set up an online run
-        self.robot.set_xy(S.center)
+        self.robot.reset(S)
         map: Map = self.true_map # copy.deepcopy(self.true_map)
         map.set_unexplored()
         self.planner.set_goal(G)
@@ -886,7 +1017,8 @@ class OnlinePlanning:
             if c%50==0:
                 print("online planner status", S.xy, G.xy)
             # construct S
-            S = map.get_cell(self.robot.x, self.robot.y)
+            x, y = self.robot.xy
+            S: Node | Cell = map.get_cell(x, y)
 
             # check if done
             if S.equal(G):
@@ -900,10 +1032,13 @@ class OnlinePlanning:
             plan = self.planner.plan_()
 
             # take the first non-start action -- idx = 1
-            a = self.get_action(plan[1])
+            # a = self.get_action(plan[1])
+            a = plan[1]
 
             # execute
-            self.execute(a)
+            # eps should be half the cell width
+            eps = self.true_map.cell_width / 2.0
+            self.robot.drive([a], reset=False, eps=eps)
 
             # take an observation
             self.observe()
@@ -912,19 +1047,6 @@ class OnlinePlanning:
             save_state()
 
         return self.h
-
-
-    def execute(self, a):
-        """
-        a = [dx, dy] - delta x and y
-        """
-        dx, dy = a
-
-        assert(dx <= self.true_map.cell_width)
-        assert(dy <= self.true_map.cell_width)
-
-        self.robot.x += dx
-        self.robot.y += dy
 
 
 def q3_states_and_goals():
@@ -997,20 +1119,22 @@ def plot_history(history, f=None, axs=None, n=1):
     m = max(1, int(len(history) / (n*n)) + 1)
     r = range(0, len(history), m)
 
-    map: Map = None
-    robot: Robot = None
-    planner: Astar = None
+    map: Map = None #type:ignore
+    robot: Robot = None #type:ignore
+    planner: Astar = None #type:ignore
     c=-1
     for i in r:
         c += 1
         map, robot, planner = history[i]
 
         # plt.subplot(n, n, c)
+        assert(axs is not None)
         plt.sca(axs.flatten()[c])
 
         map.plot(f)
         planner.plot(f)
-        robot.plot(f)
+        # robot.plot(f)
+        robot.plot_history_xy(f)
 
         plt.title("Step {}".format(c))
 
@@ -1084,7 +1208,7 @@ def q7(plot=True):
         # executing
         astar.set_start(S)
         astar.set_goal(G)
-        p = astar.plan_()
+        p: list[Node] = astar.plan_()
 
         if plot:
             # plot map
@@ -1099,7 +1223,7 @@ def q7(plot=True):
 
     sg = q7_states_and_goals()
 
-    plans = []
+    plans: list[list[Node]] = []
     for i in range(len(sg)):
         S, G = sg[i]
         S, G = map.get_cell(*S), map.get_cell(*G)
@@ -1110,43 +1234,104 @@ def q7(plot=True):
 def q9():
     robot = Robot()
 
-    pa, pb, pc = q7(plot=False)
+    plans = q7(plot=False)
 
 
-    for p in [pa, pb, pc]:
-        robot.drive(p)
+    for p in plans:
+        robot.drive(p, eps=0.05) # eps half the cell width for q7
+        
+        # plot map
+        
+        # plot plan
+        
+        # plot robot
+        robot.plot_history()
+        
 
 def q10():
     # assume we still use q7's states and goals
     sg = q7_states_and_goals()
     S, G = sg[0]
 
+    map = Map()
+    map.init(get_range())
+
     astar = Astar()
-    robot = GridRobot()
+    robot = Robot()
+    
+    online_planner = OnlinePlanning(true_map=map, planner=astar, robot=robot)
 
-    online_planner = OnlinePlanning(planner=astar, robot=robot)
+    # runs
+    def run(S, G):
+        history = online_planner.run(S, G)
+        
+        # plots
+        n = int(np.ceil(np.sqrt(len(history))))
+        f, axs = plt.subplots(n, n)
 
-    online_planner.run(S, G)
+        plot_history(history, f, axs, n*n)
+
+        plt.show()
+
+        pass
+
+    for i in range(len(sg)):
+        S, G = sg[i]
+        S, G = map.get_cell(*S), map.get_cell(*G)
+        run(S, G)
 
 def q11():
     sg = q3_states_and_goals()
+    S, G = sg[0]
 
-    def run(grid_width):
+    # runs
+    def run(S, G, cell_width):
+
+        astar = Astar()
+        robot = Robot()
+        
+        online_planner = OnlinePlanning(true_map=map, planner=astar, robot=robot)
+        history = online_planner.run(S, G)
+        
+        # plots
+        n = int(np.ceil(np.sqrt(len(history))))
+        f, axs = plt.subplots(n, n)
+
+        plot_history(history, f, axs, n*n)
+
+        plt.show()
+
         pass
 
-    grid_width = 0.1
-    run(grid_width)
-
-    grid_width = 1.0
-    run(grid_width)
+    # iterate over cell widths
+    for cell_width in [0.1, 1.0]:
+        
+        # iterate over q3 goals
+        for i in range(len(sg)):
+            
+            # make the map
+            map = Map(cell_width=cell_width)
+            map.init(get_range(cell_width=cell_width))
+            
+            S, G = sg[i]
+            S, G = map.get_cell(*S), map.get_cell(*G)
+            
+            # do the planning
+            run(S, G, map)
 
 
 def main():
-    q3()
+    # q3()
 
-    q5()
+    # q5()
 
-    q7()
+    # q7()
+    
+    # q9()
+    
+    # q10()
+    
+    q11()
 
     input("press any key")
 
