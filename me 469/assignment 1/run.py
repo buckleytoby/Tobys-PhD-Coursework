@@ -14,6 +14,12 @@ PI2 = 2.0 * math.pi
 TEST = False
 VERBOSE = True
 
+def save(fig, label):
+    # https://stackoverflow.com/questions/7986567/matplotlib-how-to-set-the-current-figure
+    plt.figure(fig.number)
+
+    # https://stackoverflow.com/questions/9622163/save-plot-to-image-file-instead-of-displaying-it
+    plt.savefig('./outputs/' + label + '.png', dpi=300)
 
 def wrap(angle):
     # ref: https://stackoverflow.com/questions/15927755/opposite-of-numpy-unwrap
@@ -148,6 +154,8 @@ def plotbirdseye(prefix, label, x, y, theta, fig2=None, nb_pts = 20, width = 0.0
     else:
         c1 = random_color()
         c2 = c1 # random_color()
+
+        c1 = "purple"
 
     # n = int(x.shape[0] / nb_pts)
     n = x.shape[0]
@@ -358,12 +366,16 @@ class Cell:
     def get_neighbors(self):
         return self.neighbors
     
-    def cost(self):
+    def cost(self, cell):
+        d = self.dist(cell)
         # if it's not occupied, or hasn't yet been explored
         if not self.occupied or self.unexplored:
-            return 1.0 * self.width
+            # return 1.0 * self.width
+            # testing
+            return 1.0 * d
+            
         else:
-            return 1000.0 * self.width
+            return 1000.0 * d
         
     def __lt__(self, other):
         # used as a tie-breaker
@@ -422,6 +434,11 @@ class Cell:
         c = Cell(self.x, self.y, self.width, unexplored=self.unexplored)
 
         return c
+    
+    def dist(self, other):
+        delta = self.center - other.center
+        d = np.linalg.norm(delta)
+        return d
 
 
 DL = DataLoader(TEST)
@@ -448,9 +465,13 @@ class Map:
         plt.xlim(self.minx, self.maxx + self.cell_width)
         plt.ylim(self.miny, self.maxy + self.cell_width)
 
+        # plt.xticks(self.xrange)
+        # plt.yticks(self.yrange)
+
+        xrange, yrange = get_range(1.0)
+        plt.xticks(xrange)
+        plt.yticks(yrange)
         plt.grid(visible=True)
-        plt.xticks(self.xrange)
-        plt.yticks(self.yrange)
 
         ax = plt.gca()
         # https://stackoverflow.com/questions/17990845/how-do-i-equalize-the-scales-of-the-x-axis-and-y-axis
@@ -462,7 +483,7 @@ class Map:
             if cell.occupied and not cell.unexplored:
                 x, y = cell.xy
                 # ref: https://stackoverflow.com/questions/37435369/how-to-draw-a-rectangle-on-image
-                rect = patches.Rectangle((x, y), self.cell_width, self.cell_width, fill=True, color=random_color())
+                rect = patches.Rectangle((x, y), self.cell_width, self.cell_width, fill=True, color='g')
                 ax.add_patch(rect)
 
         return f
@@ -493,7 +514,7 @@ class Map:
     def make_cell(self, xr, yr):
         cell = Cell(xr, yr, self.cell_width)
 
-        # # if occupied
+        # if occupied
         self.is_occupied(cell)
 
         self.set_cell(xr, yr, cell)
@@ -511,10 +532,12 @@ class Map:
                 cell.set_occupied(True)
 
     def set_cell(self, xr, yr, cell):
-        xr = real_to_grid(xr, self.cell_width)
-        yr = real_to_grid(yr, self.cell_width)
+        xg = real_to_grid(xr, self.cell_width)
+        yg = real_to_grid(yr, self.cell_width)
 
-        self.cells[(xr, yr)] = cell
+        key = (xg, yg)
+        assert(key not in self.cells)
+        self.cells[(xg, yg)] = cell
 
     def get_cell(self, xr, yr) -> Cell | None:
         xr = real_to_grid(xr, self.cell_width)
@@ -564,6 +587,11 @@ class Map:
                 print("something went wrong.")
                 raise
 
+            # debug
+            if key == (23, -34):
+                pass
+
+            # set neighbors set_neighbors
             c.neighbors = n
 
     def copy(self):
@@ -651,7 +679,7 @@ class Astar:
             c += 1
             if c%100==0:
                 print("Evaluated {} nodes.".format(c))
-                print("node ", node.xy, " goal: ", g.xy)
+                print("node ", node.center, " goal: ", g.center)
 
             # check if it's goal
             if node.equal(g):
@@ -668,7 +696,7 @@ class Astar:
                     continue
 
                 # add to cost hash
-                cost_hash[neighbor_node] = cost_hash[node] + neighbor_node.cost()
+                cost_hash[neighbor_node] = cost_hash[node] + neighbor_node.cost(node)
 
                 # add parent
                 parent[neighbor_node] = node
@@ -678,6 +706,7 @@ class Astar:
 
                 # put into the open-set
                 put((f, neighbor_node))
+            pass
 
         if not node.equal(g):
             print("A* couldn't find a plan")
@@ -720,7 +749,7 @@ class Astar:
 
             xys = np.array([xy1, xy2])
 
-            plt.arrow(x, y, dx, dy, width=0.05, color=random_color())
+            plt.arrow(x, y, dx, dy, width=0.05, color='orange')
     
     def copy(self):
         """
@@ -884,7 +913,6 @@ class Robot:
         
         # method vars
         done = False
-        eps = 5e-1 # units: m
         idx = 0
         
         # get first node
@@ -1094,7 +1122,7 @@ class OnlinePlanning:
 
             # execute
             # eps should be less than half the cell width
-            eps = self.true_map.cell_width / 2.0 - 1e-3
+            eps = self.true_map.cell_width / 4.0
             self.robot.drive([a], reset=False, eps=eps)
 
             # take an observation
@@ -1132,8 +1160,9 @@ def q3_states_and_goals():
     return sg
 
 def get_range(cell_width = 1.0):
-    xlim = np.array([-2, 5])
-    ylim = np.array([-6, 6])
+    eps = 1e-3
+    xlim = np.array([-2 + eps, 5 + eps])
+    ylim = np.array([-6 + eps, 6 + eps])
     nx = int((xlim[1] - xlim[0]) / cell_width) + 1
     ny = int((ylim[1] - ylim[0]) / cell_width) + 1
     xrange = np.linspace(xlim[0], xlim[1], nx)
@@ -1148,7 +1177,10 @@ def q3():
     astar = Astar()
     astar.set_map(map)
 
+    c = 0
     def run(S, G):
+        nonlocal c
+        c += 1
         # executing
         astar.set_start(S)
         astar.set_goal(G)
@@ -1160,7 +1192,10 @@ def q3():
         # plotting
         astar.plot(f)
 
+        save(f, "q3: #" + str(c))
+
         plt.show()
+
 
     sg = q3_states_and_goals()
 
@@ -1209,7 +1244,10 @@ def q5():
 
 
     # runs
+    c = 0
     def run(S, G):
+        nonlocal c
+        c += 1
         history = online_planner.run(S, G)
         
         # plots
@@ -1217,6 +1255,8 @@ def q5():
         f, axs = plt.subplots(n, n)
 
         plot_history(history, f, axs, n*n)
+
+        save(f, "q5: #" + str(c))
 
         plt.show()
 
@@ -1260,8 +1300,10 @@ def q7(plot=True):
     astar = Astar()
     astar.set_map(map)
     
-
+    c = 0
     def run(S, G):
+        nonlocal c
+        c += 1
         # executing
         astar.set_start(S)
         astar.set_goal(G)
@@ -1276,6 +1318,8 @@ def q7(plot=True):
             # plotting
             astar.plot(f)
 
+            save(f, "q7: #" + str(c))
+
             plt.show()
 
         return p
@@ -1288,23 +1332,29 @@ def q7(plot=True):
         S, G = map.get_cell(*S), map.get_cell(*G)
         plans.append(run(S, G))
 
-    return plans
+    return plans, map, astar
 
 def q9():
     robot = Robot()
 
-    plans = q7(plot=False)
+    plans, map, astar = q7(plot=False)
 
-
+    c = 0
     for p in plans:
+        c += 1
         robot.drive(p, eps=0.05) # eps half the cell width for q7
-        
+    
         # plot map
-        
-        # plot plan
+        f = map.plot()
+
+        # plotting
+        astar.plan = p
+        astar.plot(f)
         
         # plot robot
         robot.plot_history()
+
+        save(f, "q9: #" + str(c))
         
 
 def q10():
@@ -1321,7 +1371,10 @@ def q10():
     online_planner = OnlinePlanning(true_map=map, planner=astar, robot=robot)
 
     # runs
+    c = 0
     def run(S, G):
+        nonlocal c
+        c += 1
         history = online_planner.run(S, G)
         
         # plots
@@ -1329,6 +1382,8 @@ def q10():
         f, axs = plt.subplots(n, n)
 
         plot_history(history, f, axs, n*n)
+
+        save(f, "q10: #" + str(c))
 
         plt.show()
 
@@ -1344,7 +1399,10 @@ def q11():
     S, G = sg[0]
 
     # runs
+    c = 0
     def run(S, G, cell_width):
+        nonlocal c
+        c += 1
 
         astar = Astar()
         robot = Robot()
@@ -1358,15 +1416,17 @@ def q11():
 
         plot_history(history, f, axs, n*n)
 
+        save(f, "q11: #" + str(c))
+
         plt.show()
 
         pass
 
     # iterate over cell widths
-    for cell_width in [0.1]:
+    for cell_width in [1.0, 0.1]:
         
         # iterate over q3 goals
-        for i in [0]: # range(len(sg)):
+        for i in range(len(sg)):
             
             # make the map
             map = Map(cell_width=cell_width)
@@ -1380,19 +1440,17 @@ def q11():
 
 
 def main():
-    # q3()
+    q3()
 
-    # q5()
+    q5()
 
     q7()
     
-    # q9()
+    q9()
     
-    # q10()
+    q10()
     
-    # q11()
-
-    input("press any key")
+    q11()
 
 if __name__ == "__main__":
     main()
