@@ -19,7 +19,7 @@ def save(fig, label):
     plt.figure(fig.number)
 
     # https://stackoverflow.com/questions/9622163/save-plot-to-image-file-instead-of-displaying-it
-    plt.savefig('./outputs/' + label + '.png', dpi=300)
+    plt.savefig('./outputs/' + label + '.png', dpi=300, bbox_inches='tight')
 
 def wrap(angle):
     # ref: https://stackoverflow.com/questions/15927755/opposite-of-numpy-unwrap
@@ -367,11 +367,11 @@ class Cell:
         return self.neighbors
     
     def cost(self, cell):
-        d = self.dist(cell)
+        # scale to the cell width so I can debug more easily
+
+        d = self.width
         # if it's not occupied, or hasn't yet been explored
         if not self.occupied or self.unexplored:
-            # return 1.0 * self.width
-            # testing
             return 1.0 * d
             
         else:
@@ -660,7 +660,19 @@ class Astar:
 
         # euclidean distance
         def heuristic(node: Node):
-            h = np.linalg.norm(node.center - g.center)
+            dx, dy = np.abs(node.center - g.center)
+
+            if dy < dx:
+                dz = dy
+                dy = dx
+                dx = dz
+
+            # now, dx is less than dy, so take dx diagonal moves
+            h = dx
+
+            # now take dy - dx straight moves
+            h += (dy - dx)
+
             return h
 
         done = False
@@ -1208,8 +1220,11 @@ def plot_history(history, f=None, axs=None, n=1):
     if f is None:
         f = plt.figure()
 
-    m = max(1, int(len(history) / (n*n)) + 1)
-    r = range(0, len(history), m)
+    # m = max(1, len(history) / (n*n) + 1)
+
+    r = np.linspace(0, len(history)-1, n*n, dtype='int')
+
+    # r = range(0, len(history), m)
 
     map: Map = None #type:ignore
     robot: Robot = None #type:ignore
@@ -1228,8 +1243,9 @@ def plot_history(history, f=None, axs=None, n=1):
         # robot.plot(f)
         robot.plot_history_xy(f)
 
-        plt.title("Step {}".format(c))
+        plt.title("Step {}".format(i))
 
+    f.tight_layout()
     pass
 
 
@@ -1252,9 +1268,10 @@ def q5():
         
         # plots
         n = int(np.ceil(np.sqrt(len(history))))
+        n = min(n, 3) # max 3x3 
         f, axs = plt.subplots(n, n)
 
-        plot_history(history, f, axs, n*n)
+        plot_history(history, f, axs, n)
 
         save(f, "q5: #" + str(c))
 
@@ -1352,7 +1369,7 @@ def q9():
         astar.plot(f)
         
         # plot robot
-        robot.plot_history()
+        robot.plot_history_xy(f)
 
         save(f, "q9: #" + str(c))
         
@@ -1379,9 +1396,10 @@ def q10():
         
         # plots
         n = int(np.ceil(np.sqrt(len(history))))
+        n = min(n, 3) # max 3x3
         f, axs = plt.subplots(n, n)
 
-        plot_history(history, f, axs, n*n)
+        plot_history(history, f, axs, n)
 
         save(f, "q10: #" + str(c))
 
@@ -1412,9 +1430,11 @@ def q11():
         
         # plots
         n = int(np.ceil(np.sqrt(len(history))))
+        n = min(n, 3)
         f, axs = plt.subplots(n, n)
 
-        plot_history(history, f, axs, n*n)
+        plot_history(history, f, axs, n)
+        
 
         save(f, "q11: #" + str(c))
 
