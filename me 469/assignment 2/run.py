@@ -118,7 +118,8 @@ class Dense(Layer):
 
         x = self.params['A'] @ x
 
-        # x += self.params['B']
+        assert(x.shape == self.params['B'].shape)
+        x += self.params['B']
 
         assert(not np.any(np.isnan(x)))
         return x
@@ -131,12 +132,13 @@ class Dense(Layer):
 
         and if L = f(y) then dL/dA = dL/df * df/dA 
 
-        partial w.r.t. A is x
-        partial w.r.t. B is 1
+        dy/dA = x
+        dy/dB = 1
 
         dy/dx = A
         return dy/dx * upstream_grad (chain rule)
         """
+        # we expect upstream_grad to be [n, 1] and self.x.T to be [1, m] and self.grads['A'] to be [n, m]
         self.grads['A'] = upstream_grad @ self.x.T
         
         self.grads['B'] = upstream_grad
@@ -147,7 +149,8 @@ class Dense(Layer):
         assert(not np.any(np.isnan(self.grads['A'])))
         assert(not np.any(np.isnan(self.grads['B'])))
 
-        return self.grads['A'].T
+        out = upstream_grad.T @ self.params['A']
+        return out.T
 
 class LeakyReLu(Layer):
     """
@@ -195,15 +198,20 @@ class NN:
     """
     def __init__(self, input, hidden, output) -> None:
         # simple MLP
-        self.dense1 = Dense(input, output)
+        self.dense1 = Dense(input, hidden)
         self.nonlinear1 = LeakyReLu(scale = 0.1)
-        self.dense2 = Dense(hidden, output)
+
+        self.densen = Dense(hidden, output)
+
+        def f():
+            return [Dense(hidden, hidden), LeakyReLu(scale = 0.1)]
 
         self.layers: list[Layer] = [
             self.dense1,
-            # self.nonlinear1,
-            # self.dense2
-        ]
+            self.nonlinear1,
+        ] 
+        # self.layers += f()
+        self.layers += [self.densen]
         
     def forward(self, inp):
         # ensure inp is 2d
@@ -223,7 +231,8 @@ class NN:
         compute each gradient 
         """
         # make sure it's 2d
-        ug = np.reshape(upstream_grad, [upstream_grad.shape[0], 1])
+        # ug = np.reshape(upstream_grad, [upstream_grad.shape[0], 1])
+        ug = upstream_grad
 
         # must traverse in reverse because order matters
         for layer in reversed(self.layers):
@@ -619,14 +628,18 @@ class Training:
 
 
 def main():
+    # network params
+    hidden_dim = 16
+    nb_hidden_layers = 2
+
     # learning params
     lra = 1e-5
     lrc = 1e-4
-    gamma = 0.0 # discount
+    gamma = 0.95 # discount
     nb_epochs = 1000
     batch_size = 32
     max_nb_episode_steps = 100 # recall, each step is 0.1 seconds
-    nb_episodes = 100
+    nb_episodes = 200
 
     # env params
     state_dim = 5 # [x, y, th, xg, yg]
@@ -636,7 +649,7 @@ def main():
     action_shape = [action_dim]
 
     # make the classes
-    policy = NN(state_dim, 16, action_dim)
+    policy = NN(state_dim, hidden_dim, action_dim)
     algorithm = QLearning(gamma, policy, state_dim + action_dim, lrc)
     opt = Optimizer(algorithm, policy, lra, nb_epochs, state_dim)
     env = Env(max_nb_episode_steps)
