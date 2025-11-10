@@ -5,13 +5,38 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
+class Log:
+    def __init__(self) -> None:
+        self.d = []
+        
+    def __getitem__(self, idx):
+        d = np.array(self.d[idx])
+        
+        return d
+    
+    def append(self, val):
+        self.d.append(val)
+class Logs():
+    def __init__(self) -> None:
+        self.d = defaultdict(Log)
+        
+    def __getitem__(self, key):
+        d = np.array(self.d[key].d)
+        
+        return d
+    
+    def append(self, key, val):
+        self.d[key].append(val)
+        
+    def items(self):
+        return self.d.items()
 
 class Logger:
     def __init__(self) -> None:
-        self.logs = defaultdict(list)
+        self.logs = Logs()
 
     def log_one(self, key, val):
-        self.logs[key].append(val)
+        self.logs.append(key, val)
 
     def plot(self, key):
         d = self.logs[key]
@@ -21,6 +46,43 @@ class Logger:
         plt.title(key)
 
         plt.show()
+        
+    def plot_avg(self, key, n):
+        # ref: https://learnpython.com/blog/average-in-matplotlib/
+        n = int(n)
+        
+        d1 = self.logs[key]
+        
+        # forward-fill & backward-fill n zeros
+        d2 = np.zeros(n)
+        
+        d3 = np.concatenate([d2, d1, d2])
+        
+        d4 = []
+        for idx in range(n, len(d3)-n):
+            d5 = d3[idx-n:idx+n]
+            m = np.mean(d5)
+            
+            d4.append(m)
+
+        f = plt.figure()
+        plt.plot(d4)
+        plt.title(key)
+
+        plt.show()
+        
+    def print_last(self):
+        for key, val in self.logs.items():
+            print("{}: {}".format(key, val[-1]))
+            
+    def print_avg_last_n(self, n):
+        n = int(n)
+        for key, val in self.logs.items():
+            v1 = val[-n:]
+            
+            v2 = np.mean(v1)
+            
+            print("{} avg last n: {}".format(key, v2))
 
 # global
 LOG = True
@@ -106,8 +168,9 @@ class Dense(Layer):
         self.input = input
         self.output = output
 
-        self.params['A'] = self.init_param([output, input])
-        self.params['B'] = self.init_param([output, 1])
+        # leading dim for the batch dim
+        self.params['A'] = self.init_param([1, output, input])
+        self.params['B'] = self.init_param([1, output, 1])
 
     def forward(self, inp):
         """
@@ -118,7 +181,8 @@ class Dense(Layer):
 
         x = self.params['A'] @ x
 
-        assert(x.shape == self.params['B'].shape)
+        # ignoring batch dim
+        assert(x.shape[1:] == self.params['B'].shape[1:])
         x += self.params['B']
 
         assert(not np.any(np.isnan(x)))
@@ -214,14 +278,17 @@ class NN:
         self.layers += [self.densen]
         
     def forward(self, inp):
-        # ensure inp is 2d
-        x = np.reshape(inp, [inp.shape[0], 1])
+        # ensure inp is 3d: [batch-dim, state-dim, 1]
+        # x = np.reshape(inp, [inp.shape[0], 1])
+        x = inp
+        
+        assert(x.ndim == 3)
 
         for layer in self.layers:
             x = layer.forward(x)
 
         # ensure output is flat
-        x = np.squeeze(x)
+        # x = np.squeeze(x)
 
         assert(not np.any(np.isnan(x)))
         return x
@@ -269,12 +336,14 @@ class QLearning:
                  policy: NN,
                  state_action_dim: int,
                  lr,
+                 actor: NN,
                  ) -> None:
         
         self.gamma = gamma
         self.policy = policy
         self.state_action_dim = state_action_dim
         self.lr = lr
+        self.actor = actor
 
         # assertions
         assert(self.gamma < 1.0)
@@ -284,8 +353,8 @@ class QLearning:
         self.Q = NN(self.state_action_dim, 16, 1)
 
     def forward(self, state, action):
-        # concat the s, a
-        sa = np.concatenate([state, action])
+        # concat the s, a along the variable dim (1)
+        sa = np.concatenate([state, action], axis=1)
 
         qval = self.Q.forward(sa)
 
@@ -296,13 +365,22 @@ class QLearning:
         Bellman Eq is Q(s, a) = r + gamma * Q(s', a')
         """
         # get the next action from our policy
-        ap = np.zeros([2]) # self.policy.forward(statep)
+        ap = self.actor.forward(state)
 
-        # only compute future_q if the episode didn't end at this sample
-        if not done:
-            future_q = self.gamma * self.forward(statep, ap)
-        else:
-            future_q = 0.0
+        # # only compute future_q if the episode didn't end at this sample
+        # if not done:
+        #     future_q = self.gamma * self.forward(statep, ap)
+        # else:
+        #     future_q = 0.0
+        
+        # batch compatible
+        qpvals = self.forward(statep, ap)
+        
+        # remove the row dim (dim 2)
+        qpvals2 = np.reshape(qpvals, [-1, 1])
+        
+        # compute future-q's
+        future_q = self.gamma * qpvals2 * (1.0 - done)
 
         qsa = reward + future_q
 
@@ -317,18 +395,21 @@ class QLearning:
 
         # get the current q-val, do this 2nd so our NN saves the correct forward values
         qval = self.forward(state, action)
+        
+        # remove the row dim (dim 2)
+        qval2 = np.reshape(qval, [-1, 1])
 
         # compute the MSE loss, 1/2(y' - y)^2
         # convention: final - initial, target - current
-        dy = target_q - qval
-        loss = 0.5 * np.inner(dy, dy)
+        dy = target_q - qval2
+        loss = 0.5 * (dy.T @ dy)
 
         # assuming MSE loss, the gradient of params p is dL/dp = (y' - y') * dy/dp -> dL/dy = (y' - y) * -1
         # dL/dy = (y' - y) * -1
         self.dLdy = -dy
 
         # test
-        if abs(loss) > 100.0:
+        if np.any(np.abs(loss) > 100.0):
             pass
 
         return loss
@@ -423,13 +504,28 @@ class Optimizer:
         if True:
             self.step_actor(state)
         
-    def step_batch(self, batch):
-        # naive, use a for loop
+    def step_batch2(self, batch):
+        # naive & slow, use a for loop
 
         for sample in batch:
             s, a, r, sp, done = sample
 
             self.step(s, a, r, sp, done)
+        
+    def step_batch(self, batch):
+        # unzip it
+        b1 = list(zip(*batch)) # ref: https://stackoverflow.com/questions/12974474/how-to-unzip-a-list-of-tuples-into-individual-lists
+        
+        # np it, float it
+        b2 = [np.array(b, dtype=np.float32) for b in b1]
+        
+        # add trailing dim to make all entries column vectors
+        b3 = [np.expand_dims(b, axis=b.ndim) for b in b2]
+        
+        s, a, r, sp, done = b3
+        
+        # step it
+        self.step(s, a, r, sp, done)
 
 class Env:
     def __init__(self,
@@ -549,6 +645,8 @@ class ReplayBuffer:
 
     def store(self, state, action, reward, statep, done):
         t = (state, action, reward, statep, done)
+        
+        assert(len(t) == 5)
         self.rb.append(t)
 
     def get_batch(self, batch_size):
@@ -583,6 +681,15 @@ class Training:
 
         # my members
         self.rb = ReplayBuffer()
+        
+    def avg_and_print(self, dd):
+        l = dd['len']
+        
+        print("Ep len: {}".format(l))
+        for key, val in dd.items():
+            v = val / l
+            
+            print("{} avg: {}".format(key, v))
 
     def run(self, nb_episodes):
         # initial values
@@ -592,20 +699,37 @@ class Training:
         # reset the env, get intial state
         state = self.env.reset()
         done = False
-
+        ep_averager = defaultdict(float)
         c = 0
+        
+        def reset():
+            nonlocal ep_averager, c, nb_episodes, state, done
+            
+            ep_len = ep_averager['len']
+            logger.print_avg_last_n(ep_len)
+            print("Ep reset. #{} of {}".format(c, nb_episodes))
+            self.avg_and_print(ep_averager)
+            print("------------------------------------------------")
+            
+            state = self.env.reset()
+            done = False
+            ep_averager = defaultdict(float)
+
         while c < nb_episodes:
             # whether to reset
             if done:
-                state = self.env.reset()
                 c += 1
-                print("Ep reset. #{} of {}".format(c, nb_episodes))
+                reset()
 
             # query policy for an action
             # action = self.policy.forward(state)
 
             # step env
             statep, reward, done = self.env.step(action)
+            
+            #
+            ep_averager['reward'] += reward
+            ep_averager['len'] += 1.0
 
             logger.log_one("reward", reward)
 
@@ -639,7 +763,7 @@ def main():
     nb_epochs = 1000
     batch_size = 32
     max_nb_episode_steps = 100 # recall, each step is 0.1 seconds
-    nb_episodes = 200
+    nb_episodes = 1
 
     # env params
     state_dim = 5 # [x, y, th, xg, yg]
@@ -649,8 +773,8 @@ def main():
     action_shape = [action_dim]
 
     # make the classes
-    policy = NN(state_dim, hidden_dim, action_dim)
-    algorithm = QLearning(gamma, policy, state_dim + action_dim, lrc)
+    policy = NN(state_dim, hidden_dim, action_dim) # actor
+    algorithm = QLearning(gamma, policy, state_dim + action_dim, lrc, policy) # critic
     opt = Optimizer(algorithm, policy, lra, nb_epochs, state_dim)
     env = Env(max_nb_episode_steps)
 
@@ -663,8 +787,9 @@ def main():
     #     pass
 
     # plotting
-    logger.plot('qloss')
-    logger.plot('reward')
+    n = 25
+    logger.plot_avg('qloss', n)
+    logger.plot_avg('reward', n)
 
     input("press any key to exit")
 
