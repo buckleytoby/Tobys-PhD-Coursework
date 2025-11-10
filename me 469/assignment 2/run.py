@@ -211,7 +211,7 @@ class Dense(Layer):
         return dy/dx * upstream_grad (chain rule)
         """
         # we expect upstream_grad to be [n, 1] and self.x.T to be [1, m] and self.grads['A'] to be [n, m]
-        x2 = np.permute_dims(self.x, [0, 2, 1])
+        x2 = np.transpose(self.x, [0, 2, 1])
         self.grads['A'] = upstream_grad @ x2
         # self.grads['A'] = self.x @ upstream_grad
         
@@ -223,11 +223,11 @@ class Dense(Layer):
         assert(not np.any(np.isnan(self.grads['A'])))
         assert(not np.any(np.isnan(self.grads['B'])))
 
-        upstream_grad2 = np.permute_dims(upstream_grad, [0, 2, 1])
+        upstream_grad2 = np.transpose(upstream_grad, [0, 2, 1])
 
         out = upstream_grad2 @ self.params['A']
 
-        out2 = np.permute_dims(out, [0, 2, 1])
+        out2 = np.transpose(out, [0, 2, 1])
         return out2
 
 class LeakyReLu(Layer):
@@ -342,6 +342,22 @@ class NN:
 
     #     for layer in self.layers:
     #         l += layer.param_length()
+    
+    def infer(self, inp):
+        """
+        assumes inp is a single input
+        """
+        x = inp.squeeze()
+        
+        # add state dim
+        x = np.expand_dims(x, x.ndim)
+        
+        # add batch dim
+        x = np.reshape(x, [1] + list(x.shape))
+        
+        y = self.forward(x)
+        
+        return y
 
 
 
@@ -613,6 +629,12 @@ class Env:
         xg, yg = self.G.center
 
         s = np.array([x, y, th, xg, yg])
+        
+        # # add state dim
+        # s2 = np.expand_dims(s, s.ndim)
+        
+        # # add batch dim
+        # s3 = np.reshape(s2, [1] + list(s2.shape))
         return s
     
     def get_reward(self):
@@ -651,6 +673,10 @@ class Env:
 
         # normalize rewards to [-1, 1]
         reward /= 1000.0
+        
+        # add batch dim
+        # r2 = np.expand_dims(reward, axis=0)
+        # d2 = np.expand_dims(done, axis=0)
 
         return reward, done
 
@@ -767,10 +793,13 @@ class Training:
                 reset()
 
             # query policy for an action
-            action = self.policy.forward(state)
+            action = self.policy.infer(state)
+            
+            # squeeze
+            a2 = action.squeeze()
 
             # step env
-            statep, reward, done = self.env.step(action)
+            statep, reward, done = self.env.step(a2)
             
             #
             ep_averager['reward'] += reward
@@ -779,7 +808,7 @@ class Training:
             logger.log_one("reward", reward)
 
             # save the sample
-            self.rb.store(state, action, reward, statep, done)
+            self.rb.store(state, a2, reward, statep, done)
 
             # get a batch
             batch = self.rb.get_batch(self.batch_size)
