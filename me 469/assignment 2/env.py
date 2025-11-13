@@ -10,8 +10,9 @@ import scipy
 import scipy.stats
 import scipy.signal
 
+import globals
+
 PI2 = 2.0 * math.pi
-TEST = False
 VERBOSE = True
 
 def save(fig, label):
@@ -70,7 +71,7 @@ class History:
 # http://asrl.utias.utoronto.ca/datasets/mrclam/index.html#Details
 class DataLoader:
     def __init__(self,
-                 test=TEST,
+                 test=globals.TEST,
                  max_nb_pts = None,
                  percentage = 1.0
                  ):
@@ -380,7 +381,10 @@ class Cell:
             return 1.0 * d
             
         else:
-            return 1000.0 * d
+            if globals.TEST:
+                return 1.0 * d
+            else:
+                return 10.0 * d
         
     def __lt__(self, other):
         # used as a tie-breaker
@@ -446,22 +450,24 @@ class Cell:
         return d
 
 
-DL = DataLoader(TEST)
+DL = DataLoader(globals.TEST)
 
 class Map:
     def __init__(self,
                  cell_width = 1.0,
-                 object_width = None
+                 object_width = None,
+                 default_explored = True,
                  ):
         self.cells = {}
         self.cell_width = cell_width
         self.object_width = object_width
+        self.default_explored = default_explored
 
         self.landmarks = DL["Landmark_Groundtruth"]
 
     def set_unexplored(self):
         for key, cell in self.cells.items():
-            cell.unexplored = True
+            cell.unexplored = self.default_explored
 
     def plot(self, f=None):
         if f is None:

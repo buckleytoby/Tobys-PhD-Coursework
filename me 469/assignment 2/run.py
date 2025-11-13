@@ -5,6 +5,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
+import globals
+
 class Log:
     def __init__(self) -> None:
         self.d = []
@@ -117,7 +119,7 @@ class Layer:
         return inp
     
     def backward(self, upstream_grad):
-        pass
+        return np.array(None)
 
     def save(self, x):
         # save for the backward pass
@@ -274,7 +276,8 @@ class NN:
     """
     neural net class
     """
-    def __init__(self, input, hidden, output) -> None:
+    def __init__(self, input, hidden, output, needs_step=True) -> None:
+        self.needs_step = needs_step
 
         # simple MLP
         self.dense1 = Dense(input, hidden)
@@ -292,7 +295,7 @@ class NN:
         # self.layers += f()
         self.layers += [self.densen]
         
-    def forward(self, inp):
+    def forward(self, inp, use_greedy=False):
         # ensure inp is 3d: [batch-dim, state-dim, 1]
         # x = np.reshape(inp, [inp.shape[0], 1])
         x = inp
@@ -359,8 +362,6 @@ class NN:
         
         return y
 
-
-
 class QLearning:
     def __init__(self,
                  gamma: float,
@@ -384,8 +385,11 @@ class QLearning:
         self.Q = NN(self.state_action_dim, 16, 1)
 
     def forward(self, state, action):
+        # normalize action to [0, 1]
+        a2 = action / 2.0
+
         # concat the s, a along the variable dim (1)
-        sa = np.concatenate([state, action], axis=1)
+        sa = np.concatenate([state, a2], axis=1)
 
         qval = self.Q.forward(sa)
 
@@ -395,8 +399,8 @@ class QLearning:
         """
         Bellman Eq is Q(s, a) = r + gamma * Q(s', a')
         """
-        # get the next action from our policy
-        ap = self.actor.forward(state)
+        # get the next action from our policy, greedy action
+        ap = self.actor.forward(state, use_greedy=True)
 
         # # only compute future_q if the episode didn't end at this sample
         # if not done:
@@ -478,6 +482,71 @@ class QLearning:
         # step the parameters in the grad's direction
         self.Q.step()
 
+
+class EpsGreedy(NN):
+    def __init__(self,
+                 max_eps, # low = less likely to explore
+                 nb_steps,
+                 action_range,
+                 needs_step = False
+                 ) -> None:
+        self.max_eps = max_eps
+        self.nb_steps = nb_steps
+        self.action_range = action_range
+        self.needs_step = needs_step
+
+        # ref
+        self.critic = None
+
+        # my members
+        self.layers = []
+
+    def calc_eps(self):
+        # max_eps when step = 0.0
+        # 0.1 when step = nb_steps
+        # keep it simple, linear interp
+        alpha = globals.STEP / self.nb_steps # [0, 1]
+
+        eps = self.max_eps * (1.0 - alpha) + 0.1 * (alpha)
+
+        return eps
+
+    def set_critic(self, critic: QLearning):
+        self.critic = critic
+
+    def greedy(self, inp):
+        assert(self.critic is not None)
+        qvals = []
+        s = inp
+
+        b = inp.shape[0]
+
+        # iterate over actions
+        for a in range(self.action_range):
+            a2 = a * np.ones([b, 1, 1])
+            qval = self.critic.forward(s, a2)
+
+            qvals.append(qval)
+
+        # stack along the action dim
+        qvals2 = np.concatenate(qvals, axis=1)
+
+        # argmax along the action dim
+        a = np.argmax(qvals2, axis=1, keepdims=True)
+
+        return a
+    
+    def forward(self, inp, use_greedy=False):
+        r = np.random.random()
+
+        b = inp.shape[0]
+
+        if r < self.calc_eps() and not use_greedy:
+            a = np.random.randint(0, self.action_range, [b, 1, 1])
+        else:
+            a = self.greedy(inp)
+
+        return a
     
 class Optimizer:
     """
@@ -544,7 +613,7 @@ class Optimizer:
 
         # step the actor
         # test
-        if True:
+        if self.policy.needs_step:
             self.step_actor(state)
         
     def step_batch2(self, batch):
@@ -573,8 +642,10 @@ class Optimizer:
 class Env:
     def __init__(self,
                  max_nb_steps,
+                 use_motion_primitives = False,
                  ) -> None:
         self.max_nb_steps = max_nb_steps
+        self.use_motion_primitives = use_motion_primitives
 
         self.map = env.Map()
         self.map.init(env.get_range())
@@ -587,15 +658,28 @@ class Env:
         self.G: env.Cell
         self.nb_steps = 0
 
+    def static_init(self):
+        x = 0.0
+        y = 0.0
+        th = 0.0
+        
+        self.robot.reset_xyth(x, y, th)
+
+        self.G = self.map.get_cell(5.0, 5.0)
+
+        return self.get_state()
 
     def reset(self):
         self.nb_steps = 0
+
+        if globals.TEST:
+            return self.static_init()
         
         while True:
             # random xy
             x = 1.0 # np.random.random() * self.xrange <>
             y = 1.0 # np.random.random() * self.yrange <>
-            th = np.random.random() * 2.0 * np.pi # [0, 360deg]
+            th = 0.0 # np.random.random() * 2.0 * np.pi # [0, 360deg]
 
             c = self.map.get_cell(x, y)
 
@@ -650,17 +734,17 @@ class Env:
 
         # large penalty for driving outside the map
         if c is None:
-            reward += -1.0 * 1000.0
+            reward += -1.0 * 100.0
         
         # inside the map
         else:
-            # penalty for traversal
+            # penalty for traversal (includes obstacle cost)
             reward += -1.0 * self.G.cost(c)
 
             # reward for reaching the goal
             d = self.G.dist(c)
             if d < eps:
-                reward += 1000.0
+                reward += 100.0
 
                 # reached goal means we're done
                 print("Reached goal")
@@ -672,15 +756,16 @@ class Env:
             done = True
 
         # normalize rewards to [-1, 1]
-        reward /= 1000.0
+        reward /= 100.0
         
         # add batch dim
         # r2 = np.expand_dims(reward, axis=0)
         # d2 = np.expand_dims(done, axis=0)
 
         return reward, done
+    
 
-    def step(self, action):
+    def step_control(self, action):
         """
         action: [v, w]
         """
@@ -694,6 +779,25 @@ class Env:
         reward, done = self.get_reward()
 
         return statep, reward, done
+    
+    def step(self, action):
+        if self.use_motion_primitives:
+            # map actions [left, right, straight] to controls
+            v = 0.0
+            w = 0.0
+            if action == 0:
+                w = -np.pi
+            elif action == 1:
+                w = np.pi
+            else:
+                v = 1.0
+
+            a = (v, w)
+
+        else:
+            a = action
+
+        return self.step_control(a)
 
 class ReplayBuffer:
     def __init__(self) -> None:
@@ -795,8 +899,8 @@ class Training:
             # query policy for an action
             action = self.policy.infer(state)
             
-            # squeeze
-            a2 = action.squeeze()
+            # remove batch and state dim
+            a2 = np.reshape(action, [1]) # action.squeeze()
 
             # step env
             statep, reward, done = self.env.step(a2)
@@ -823,34 +927,51 @@ class Training:
             # save the old state
             state = statep
 
+            # increment the step counter
+            globals.STEP += 1
+
 
 
 def main():
+    globals.TEST = False
+
     # network params
     hidden_dim = 16
     nb_hidden_layers = 2
 
     # learning params
-    lra = 2.5e-6
-    lrc = 2.5e-6
+    lra = 1e-7
+    lrc = 1e-4
     gamma = 0.95 # discount
-    nb_epochs = 1000
-    batch_size = 128
+    nb_epochs = 1000 # not used
+    batch_size = 500
     max_nb_episode_steps = 100 # recall, each step is 0.1 seconds
     nb_episodes = 1000
+    max_epsilon = 0.5
 
     # env params
     state_dim = 5 # [x, y, th, xg, yg]
     action_dim = 2 # [v, w]
+    action_range = 3 # left, right, forward
+    use_motion_primitives = True
+
+    if use_motion_primitives:
+        action_dim = 1 # [a]
 
     state_shape = [state_dim]
     action_shape = [action_dim]
 
     # make the classes
-    policy = NN(state_dim, hidden_dim, action_dim) # actor
+    # policy = NN(state_dim, hidden_dim, action_dim) # actor
+    policy = EpsGreedy(max_epsilon, nb_episodes * max_nb_episode_steps, action_range)
     algorithm = QLearning(gamma, policy, state_dim + action_dim, lrc, policy) # critic
+
+    # pass a ref
+    policy.set_critic(algorithm)
+
+
     opt = Optimizer(algorithm, policy, lra, nb_epochs, state_dim)
-    env = Env(max_nb_episode_steps)
+    env = Env(max_nb_episode_steps, use_motion_primitives)
 
     # make the trainer and run
     trainer = Training(env, opt, policy, action_shape, state_shape, batch_size)
