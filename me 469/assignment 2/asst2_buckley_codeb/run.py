@@ -4,7 +4,6 @@ import env
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import pandas as pd
 
 import globals
 
@@ -912,37 +911,6 @@ class ReplayBuffer:
         # samples = self.rb[idxs]
 
         return samples
-    
-    def get_column(self, idx):
-        """
-        idx in [0:5]
-        """
-        assert(idx < 5)
-        assert(idx >= 0)
-        c = np.array([d[idx] for d in self.rb])
-        return c
-    
-    def save(self):
-        # convert to np
-        df = pd.DataFrame()
-        # keys = ['state', 'action', 'reward', 'statep', 'done']
-        keys = ['x', 'y', 'theta', 'a', 'r', 'xp', 'yp', 'thetap', 'done']
-
-        cs = []
-        for i in range(5):
-            c = self.get_column(i)
-
-            if c.ndim == 1:
-                c = np.expand_dims(c, axis=-1)
-            cs.append(c)
-
-        cs2 = np.concatenate(cs, axis=1)
-
-        df = pd.DataFrame(cs2, columns=keys)
-
-        df.to_csv("./pd_dataset.csv", index = False)
-
-
 
 class Training:
     def __init__(self,
@@ -1105,13 +1073,6 @@ class Training:
         # one final reset for plotting
         reset()
 
-    def save_rb(self):
-        """
-        save the replay buffer to disk
-        """
-        self.rb.save()
-
-
 def calc_map_Vvals(map: env.Map, critic):
     cell: env.Cell
     for key, cell in map.cells:
@@ -1139,7 +1100,7 @@ def main():
     nb_epochs = 0 # not used
     batch_size = 256
     max_nb_episode_steps = 100 # recall, each step is 0.1 seconds
-    nb_episodes = 30000
+    nb_episodes = 50
     max_epsilon = 0.33
 
     # env params
@@ -1180,15 +1141,14 @@ def main():
     #     pass
 
     # plotting
-    if False:
-        f = env.map.plot()
-        env.G.plot(f)
-        plt.legend()
-        save(f, "map")
-        # plt.show()
+    f = env.map.plot()
+    env.G.plot(f)
+    plt.legend()
+    save(f, "map")
+    # plt.show()
 
 
-    if False:
+    if True:
         label = "lr{:.0E}_nb_ep{}_test".format(lrc, nb_episodes)
 
         n = 200
@@ -1201,9 +1161,6 @@ def main():
         logger.plot_avg("time_to_goal", 50, "Episode Count", label=label)
 
     # input("press any key to exit")
-
-    # save the replay buffer?
-    trainer.save_rb()
 
 if __name__ == "__main__":
     main()

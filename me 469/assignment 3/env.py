@@ -80,29 +80,28 @@ class DataLoader:
         self.percentage = percentage
 
         # params
-        dir = "./ds1"
-        prefix = "ds1"
+        dir = "./oliver_data"
+        prefix = ""
         postfixes = [
-            "Barcodes",
-            "Control",
-            "Groundtruth",
-            "Landmark_Groundtruth",
-            "Measurement"
+            "robot_inputs",
+            "robot_outputs",
+            "world_inputs",
+            "world_outputs",
         ]
 
-        filetype = ".dat"
+        filetype = ".csv"
 
         self.data = {}
 
         for postfix in postfixes:
             key = postfix
-            local_fn = prefix + "_" + postfix + filetype
+            local_fn = postfix + filetype
             fn = os.path.join(dir, local_fn)
 
 
             data = []
 
-            df = pd.read_csv(fn, sep=r'\s+', skipinitialspace=True, comment="#", header=None)
+            df = pd.read_csv(fn)
             data = df.to_numpy()
 
             if self.max_nb_pts is not None:
@@ -110,8 +109,8 @@ class DataLoader:
 
             self.data[key] = np.array(data, dtype="double")
 
-        if self.percentage is not None:
-            self.time_percentage()
+        # if self.percentage is not None:
+        #     self.time_percentage()
 
     def time_percentage(self):
         keys = ["Measurement", "Groundtruth", "Control"]

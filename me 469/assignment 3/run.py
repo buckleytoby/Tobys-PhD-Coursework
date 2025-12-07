@@ -913,6 +913,9 @@ class ReplayBuffer:
 
         return samples
     
+    def __len__(self):
+        return len(self.rb)
+
     def get_column(self, idx):
         """
         idx in [0:5]
@@ -921,6 +924,11 @@ class ReplayBuffer:
         assert(idx >= 0)
         c = np.array([d[idx] for d in self.rb])
         return c
+    
+    def get_columns(self):
+        cs = [self.get_column(idx) for idx in range(5)]
+
+        return cs
     
     def save(self):
         # convert to np
@@ -962,6 +970,71 @@ class Training:
 
         # my members
         self.rb = ReplayBuffer()
+        self.val_rb = ReplayBuffer()
+
+        self.load_into_rb()
+
+    def outputs_to_actions(self, o):
+        # 
+        aidx = np.argmax(np.abs(o), axis=1, keepdims=True)
+
+        aa = np.zeros_like(o)
+
+        # for idx, aidx2 in enumerate(aidx):
+        #     aa[idx, aidx2] = o[idx, aidx2]
+        aa[aidx] = o[aidx]
+
+        return aa, aidx
+
+    def load_into_rb(self):
+        """
+        transform data into a form that is compatible with my alg
+        """
+        dl = env.DL
+
+        i = dl['robot_inputs']
+        o = dl['robot_outputs']
+
+        # skip the time column
+        ss = i[:, 1:]
+
+
+        aa, aidx = self.outputs_to_actions(o)
+
+        # reward is the negative loss: -1.0 * diff norm, along the var dim
+        rr = -1.0 * np.linalg.norm(o - aa, axis=1)
+
+        # normalize to 1.0ish
+        rr /= np.abs(rr.mean())
+
+        # train vs val
+        l = len(ss) - 1
+
+        # percent
+        percent = 0.90
+
+        nb_train = int(percent * l)
+
+        # train
+        for i in range(0, nb_train):
+            s = ss[i]
+            a = aidx[i]
+            r = rr[i]
+            sp = ss[i] # not actually used
+
+            self.rb.store(s, a, r, sp, False)
+
+        # val
+        for i in range(nb_train, l):
+            s = ss[i]
+            a = aidx[i]
+            r = rr[i]
+            sp = ss[i] # not actually used
+
+            self.val_rb.store(s, a, r, sp, False)
+
+        pass
+
         
     def avg_and_print(self, dd):
         l = dd['len']
@@ -991,53 +1064,73 @@ class Training:
         save(f, label, dir="rollouts")
         # plt.show()
 
+    def val_loss(self):
+        l = len(self.val_rb)
+
+        # get val set
+        s, a, r, sp, done = self.val_rb.get_columns()
+
+        s2 = np.expand_dims(s, -1)
+
+        # eps greedy
+        aa = self.policy.forward(s2, use_greedy=True)
+        aa2 = np.squeeze(aa)
+        a2 = np.squeeze(a)
+        # loss
+        loss = np.mean(np.abs(a2 - aa2))
+
+        logger.log_one("val_loss", loss)
+        
+
     def run(self, nb_episodes):
         # initial values
         action = np.zeros(self.action_shape) # old action
         state = np.zeros(self.state_shape) # old state
 
         # reset the env, get intial state
-        state = self.env.reset()
+        # state = self.env.reset()
         done = False
         ep_averager = defaultdict(float)
         c = 0
-        warmup = 500
+        warmup = 0
 
         if nb_episodes == 0:
             return
         
         def reset():
-            nonlocal ep_averager, c, nb_episodes, state, done
+            self.val_loss()
+            pass
+            # nonlocal ep_averager, c, nb_episodes, state, done
 
-            # plotting the rollout when we're in the endgame
-            if (c / nb_episodes) > 0.999:
-                self.plot_rollout()
+            # # plotting the rollout when we're in the endgame
+            # if (c / nb_episodes) > 0.999:
+            #     self.plot_rollout()
 
-            globals.EPISODE += 1
+            # globals.EPISODE += 1
             
-            ep_len = ep_averager['len']
-            rewards = ep_averager['reward']
+            # ep_len = ep_averager['len']
+            # rewards = ep_averager['reward']
 
-            ep_reward = np.sum(rewards)
+            # ep_reward = np.sum(rewards)
 
-            if ep_reward > 0.0:
-                success = 1.0
+            # if ep_reward > 0.0:
+            #     success = 1.0
 
-                # ep length if it was successful
-                logger.log_one("time_to_goal", ep_len)
-            else:
-                success = 0.0
+            #     # ep length if it was successful
+            #     logger.log_one("time_to_goal", ep_len)
+            # else:
+            #     success = 0.0
 
-            # log success rate
-            logger.log_one("success_rate", success)
-            logger.log_one("epsilon", self.policy.eps)
+            # # log success rate
+            # logger.log_one("success_rate", success)
+            # logger.log_one("epsilon", self.policy.eps)
             
-            self.avg_and_print(ep_averager)
-            self.sum_and_print(ep_averager)
+            # self.avg_and_print(ep_averager)
+            # self.sum_and_print(ep_averager)
             
-            state = self.env.reset()
-            done = False
-            ep_averager = defaultdict(float)
+            # # state = self.env.reset()
+            # done = False
+            # ep_averager = defaultdict(float)
 
         def print_():
             print("------------------------------------------------")
@@ -1050,24 +1143,27 @@ class Training:
             if done:
                 c += 1
                 reset()
+                
+                done = False
 
-            # query policy for an action
-            action = self.policy.infer(state)
-            
-            # remove batch and state dim
-            a2 = np.reshape(action, [1]) # action.squeeze()
+            if False:
+                # query policy for an action
+                action = self.policy.infer(state)
+                
+                # remove batch and state dim
+                a2 = np.reshape(action, [1]) # action.squeeze()
 
-            # step env
-            statep, reward, done = self.env.step(a2)
-            
-            #
-            ep_averager['reward'] += reward
-            ep_averager['len'] += 1.0
+                # step env
+                statep, reward, done = self.env.step(a2)
+                
+                #
+                ep_averager['reward'] += reward
+                ep_averager['len'] += 1.0
 
-            logger.log_one("reward", reward)
+                logger.log_one("reward", reward)
 
-            # save the sample
-            self.rb.store(state, a2, reward, statep, done)
+                # save the sample
+                self.rb.store(state, a2, reward, statep, done)
 
             ## training
             if globals.STEP > warmup:
@@ -1093,14 +1189,15 @@ class Training:
 
 
             # save the old state
-            state = statep
+            # state = statep
 
             # increment the step counter
             globals.STEP += 1
 
             # logging
-            if globals.STEP % 50 == 0:
+            if globals.STEP % 100 == 0:
                 print_()
+                done = True
 
         # one final reset for plotting
         reset()
@@ -1135,21 +1232,23 @@ def main():
     # learning params
     lra = 1e-7 # unused
     lrc = 1e-2
-    gamma = 0.95 # discount
+    gamma = 0.0 # discount
     nb_epochs = 0 # not used
     batch_size = 256
     max_nb_episode_steps = 100 # recall, each step is 0.1 seconds
-    nb_episodes = 30000
-    max_epsilon = 0.33
+    nb_episodes = 5000
+    max_epsilon = 0.0
 
     # env params
-    state_dim = 3 # [x, y, th]
-    action_dim = 2 # [v, w]
+    state_dim = 4 # [v, w, cth, sth]
     action_range = 3 # left, right, forward
     use_motion_primitives = True
 
     if use_motion_primitives:
         action_dim = 1 # [a]
+    else:
+        action_dim = 2 # [v, w]
+
 
     state_shape = [state_dim]
     action_shape = [action_dim]
@@ -1168,7 +1267,7 @@ def main():
     opt = Optimizer(algorithm, actor, lra, nb_epochs, state_dim)
 
     # make the sim environment
-    env = Env(max_nb_episode_steps, use_motion_primitives)
+    env = None # Env(max_nb_episode_steps, use_motion_primitives)
 
     # make the trainer and run
     trainer = Training(env, opt, actor, action_shape, state_shape, batch_size)
@@ -1188,22 +1287,22 @@ def main():
         # plt.show()
 
 
-    if False:
+    if True:
         label = "lr{:.0E}_nb_ep{}_test".format(lrc, nb_episodes)
 
         n = 200
         logger.plot_avg('qloss', n, "Step Count", label=label)
-        logger.plot_avg('reward', n, "Step Count", label=label)
+        # logger.plot_avg('reward', n, "Step Count", label=label)
         logger.plot_avg("qval", n, "Step Count", label=label)
-        logger.plot_avg("epsilon", 1, "Step Count", label=label)
-        logger.plot_avg("episodic_reward", 50, "Episode Count", label=label)
-        logger.plot_avg("success_rate", 50, "Episode Count", label=label)
-        logger.plot_avg("time_to_goal", 50, "Episode Count", label=label)
+        # logger.plot_avg("epsilon", 1, "Step Count", label=label)
+        # logger.plot_avg("episodic_reward", 50, "Episode Count", label=label)
+        # logger.plot_avg("success_rate", 50, "Episode Count", label=label)
+        logger.plot_avg("val_loss", 10, "Episode Count", label=label)
 
     # input("press any key to exit")
 
     # save the replay buffer?
-    trainer.save_rb()
+    # trainer.save_rb()
 
 if __name__ == "__main__":
     main()

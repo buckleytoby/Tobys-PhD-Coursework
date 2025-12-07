@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  27 OCT 2025 23:27
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  17 NOV 2025 19:56
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -362,13 +362,6 @@ Package graphics Info: Driver file: pdftex.def on input line 106.
 \Gin@req@height=\dimen173
 \Gin@req@width=\dimen174
 )
-
-! LaTeX Error: File `itshape.sty' not found.
-
-Type X to quit or <RETURN> to proceed,
-or enter new name. (Default extension: sty)
-
-Enter file name: 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/float/float.sty
 Package: float 2001/11/08 v1.3d Float enhancements (AL)
 \c@float@type=\count295
@@ -404,58 +397,81 @@ Package caption Info: New subtype `subfigure' on input line 238.
 Package caption Info: New subtype `subtable' on input line 238.
 \c@subtable=\count299
 )
+(/usr/local/texlive/2025/texmf-dist/tex/latex/algorithmicx/algpseudocode.sty
+Package: algpseudocode 
+
+(/usr/local/texlive/2025/texmf-dist/tex/latex/algorithmicx/algorithmicx.sty
+Package: algorithmicx 2005/04/27 v1.2 Algorithmicx
+
+Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
+\c@ALG@line=\count300
+\c@ALG@rem=\count301
+\c@ALG@nested=\count302
+\ALG@tlm=\skip54
+\ALG@thistlm=\skip55
+\c@ALG@Lnr=\count303
+\c@ALG@blocknr=\count304
+\c@ALG@storecount=\count305
+\c@ALG@tmpcounter=\count306
+\ALG@tmplength=\skip56
+)
+Document Style - pseudocode environments for use with the `algorithmicx' style
+) (/usr/local/texlive/2025/texmf-dist/tex/latex/cleveref/cleveref.sty
+Package: cleveref 2018/03/27 v0.21.4 Intelligent cross-referencing
+Package cleveref Info: `algorithmicx' support loaded on input line 3120.
+)
 LaTeX Font Info:    Trying to load font information for OT1+ntxtlf on input lin
-e 16.
+e 17.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/ot1ntxtlf.fd
 File: ot1ntxtlf.fd 2021/05/24 v1.0 font definition file for OT1/ntx/tlf
 )
 LaTeX Font Info:    Font shape `OT1/ntxtlf/m/n' will be
-(Font)              scaled to size 10.95pt on input line 16.
+(Font)              scaled to size 10.95pt on input line 17.
 
 (./writeup.aux)
 \openout1 = `writeup.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/ntxmi/m/it on input line 16.
+LaTeX Font Info:    Checking defaults for OML/ntxmi/m/it on input line 17.
 LaTeX Font Info:    Trying to load font information for OML+ntxmi on input line
- 16.
+ 17.
  (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/omlntxmi.fd
 File: omlntxmi.fd 2015/08/25 Fontinst v1.933 font definitions for OML/ntxmi.
 )
-LaTeX Font Info:    ... okay on input line 16.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 16.
-LaTeX Font Info:    ... okay on input line 16.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 16.
-LaTeX Font Info:    ... okay on input line 16.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 16.
-LaTeX Font Info:    ... okay on input line 16.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 16.
-LaTeX Font Info:    ... okay on input line 16.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 16.
-LaTeX Font Info:    ... okay on input line 16.
-LaTeX Font Info:    Checking defaults for U/ntxexa/m/n on input line 16.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for U/ntxexa/m/n on input line 17.
 LaTeX Font Info:    Trying to load font information for U+ntxexa on input line 
-16.
+17.
  (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/untxexa.fd
 File: untxexa.fd 2012/04/16 Fontinst v1.933 font definitions for U/ntxexa.
 )
-LaTeX Font Info:    ... okay on input line 16.
-LaTeX Font Info:    Checking defaults for LMS/ntxsy/m/n on input line 16.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for LMS/ntxsy/m/n on input line 17.
 LaTeX Font Info:    Trying to load font information for LMS+ntxsy on input line
- 16.
+ 17.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/lmsntxsy.fd
 File: lmsntxsy.fd 2016/07/02 Fontinst v1.933 font definitions for LMS/ntxsy.
 )
-LaTeX Font Info:    ... okay on input line 16.
-LaTeX Font Info:    Checking defaults for LMX/ntxexx/m/n on input line 16.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for LMX/ntxexx/m/n on input line 17.
 LaTeX Font Info:    Trying to load font information for LMX+ntxexx on input lin
-e 16.
+e 17.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/lmxntxexx.fd
 File: lmxntxexx.fd 2016/07/03 Fontinst v1.933 font definitions for LMX/ntxexx.
 )
-LaTeX Font Info:    ... okay on input line 16.
+LaTeX Font Info:    ... okay on input line 17.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -493,16 +509,16 @@ LaTeX Font Info:    ... okay on input line 16.
 
 (/usr/local/texlive/2025/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count300
+\scratchcounter=\count307
 \scratchdimen=\dimen183
 \scratchbox=\box57
-\nofMPsegments=\count301
-\nofMParguments=\count302
+\nofMPsegments=\count308
+\nofMParguments=\count309
 \everyMPshowfont=\toks31
-\MPscratchCnt=\count303
+\MPscratchCnt=\count310
 \MPscratchDim=\dimen184
-\MPnumerator=\count304
-\makeMPintoPDFobject=\count305
+\MPnumerator=\count311
+\makeMPintoPDFobject=\count312
 \everyMPtoPDFconversion=\toks32
 ) (/usr/local/texlive/2025/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
@@ -513,449 +529,274 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
-\c@mv@tabular=\count306
-\c@mv@boldtabular=\count307
-LaTeX Info: Command `\dddot' is already robust on input line 16.
-LaTeX Info: Command `\ddddot' is already robust on input line 16.
+\c@mv@tabular=\count313
+\c@mv@boldtabular=\count314
+LaTeX Info: Command `\dddot' is already robust on input line 17.
+LaTeX Info: Command `\ddddot' is already robust on input line 17.
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: End \AtBeginDocument code.
 LaTeX Font Info:    Font shape `OT1/ntxtlf/m/n' will be
-(Font)              scaled to size 14.4pt on input line 19.
+(Font)              scaled to size 14.4pt on input line 20.
 LaTeX Font Info:    Font shape `OT1/ntxtlf/b/n' will be
-(Font)              scaled to size 14.4pt on input line 19.
+(Font)              scaled to size 14.4pt on input line 20.
+LaTeX Font Info:    Font shape `OT1/ntxtlf/m/n' will be
+(Font)              scaled to size 12.0pt on input line 21.
+LaTeX Font Info:    Font shape `OT1/ntxtlf/b/n' will be
+(Font)              scaled to size 12.0pt on input line 21.
 LaTeX Font Info:    Trying to load font information for OT1+minntx on input lin
-e 29.
+e 34.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/ot1minntx.fd
 File: ot1minntx.fd 2023/09/09 v1.1 font definition file for OT1/minntx
 )
 LaTeX Font Info:    Font shape `OT1/minntx/m/n' will be
-(Font)              scaled to size 10.95pt on input line 29.
+(Font)              scaled to size 10.95pt on input line 34.
 LaTeX Font Info:    Font shape `OT1/minntx/m/n' will be
-(Font)              scaled to size 8.0pt on input line 29.
+(Font)              scaled to size 8.0pt on input line 34.
 LaTeX Font Info:    Font shape `OT1/minntx/m/n' will be
-(Font)              scaled to size 6.1pt on input line 29.
+(Font)              scaled to size 6.1pt on input line 34.
 LaTeX Font Info:    Font shape `OML/ntxmi/m/it' will be
-(Font)              scaled to size 10.95pt on input line 29.
+(Font)              scaled to size 10.95pt on input line 34.
 LaTeX Font Info:    Font shape `OML/ntxmi/m/it' will be
-(Font)              scaled to size 8.0pt on input line 29.
+(Font)              scaled to size 8.0pt on input line 34.
 LaTeX Font Info:    Font shape `OML/ntxmi/m/it' will be
-(Font)              scaled to size 6.1pt on input line 29.
+(Font)              scaled to size 6.1pt on input line 34.
 LaTeX Font Info:    Font shape `LMS/ntxsy/m/n' will be
-(Font)              scaled to size 10.95pt on input line 29.
+(Font)              scaled to size 10.95pt on input line 34.
 LaTeX Font Info:    Font shape `LMS/ntxsy/m/n' will be
-(Font)              scaled to size 8.0pt on input line 29.
+(Font)              scaled to size 8.0pt on input line 34.
 LaTeX Font Info:    Font shape `LMS/ntxsy/m/n' will be
-(Font)              scaled to size 6.1pt on input line 29.
+(Font)              scaled to size 6.1pt on input line 34.
 LaTeX Font Info:    Font shape `LMX/ntxexx/m/n' will be
-(Font)              scaled to size 10.95pt on input line 29.
+(Font)              scaled to size 10.95pt on input line 34.
 LaTeX Font Info:    Font shape `LMX/ntxexx/m/n' will be
-(Font)              scaled to size 8.0pt on input line 29.
+(Font)              scaled to size 8.0pt on input line 34.
 LaTeX Font Info:    Font shape `LMX/ntxexx/m/n' will be
-(Font)              scaled to size 6.1pt on input line 29.
+(Font)              scaled to size 6.1pt on input line 34.
 LaTeX Font Info:    Trying to load font information for U+ntxmia on input line 
-29.
+34.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/untxmia.fd
 File: untxmia.fd 2024/04/09 Fontinst v1.933 font definitions for U/ntxmia.
 )
 LaTeX Font Info:    Font shape `U/ntxmia/m/it' will be
-(Font)              scaled to size 10.95pt on input line 29.
+(Font)              scaled to size 10.95pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxmia/m/it' will be
-(Font)              scaled to size 8.0pt on input line 29.
+(Font)              scaled to size 8.0pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxmia/m/it' will be
-(Font)              scaled to size 6.1pt on input line 29.
+(Font)              scaled to size 6.1pt on input line 34.
 LaTeX Font Info:    Trying to load font information for U+ntxsym on input line 
-29.
+34.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/untxsym.fd
 File: untxsym.fd 2023/08/16 Fontinst v1.933 font definitions for U/ntxsym.
 )
 LaTeX Font Info:    Font shape `U/ntxsym/m/n' will be
-(Font)              scaled to size 10.95pt on input line 29.
+(Font)              scaled to size 10.95pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxsym/m/n' will be
-(Font)              scaled to size 8.0pt on input line 29.
+(Font)              scaled to size 8.0pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxsym/m/n' will be
-(Font)              scaled to size 6.1pt on input line 29.
+(Font)              scaled to size 6.1pt on input line 34.
 LaTeX Font Info:    Trying to load font information for U+ntxsyc on input line 
-29.
+34.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/newtx/untxsyc.fd
 File: untxsyc.fd 2012/04/12 Fontinst v1.933 font definitions for U/ntxsyc.
 )
 LaTeX Font Info:    Font shape `U/ntxsyc/m/n' will be
-(Font)              scaled to size 10.95pt on input line 29.
+(Font)              scaled to size 10.95pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxsyc/m/n' will be
-(Font)              scaled to size 8.0pt on input line 29.
+(Font)              scaled to size 8.0pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxsyc/m/n' will be
-(Font)              scaled to size 6.1pt on input line 29.
+(Font)              scaled to size 6.1pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxexa/m/n' will be
-(Font)              scaled to size 10.95pt on input line 29.
+(Font)              scaled to size 10.95pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxexa/m/n' will be
-(Font)              scaled to size 8.0pt on input line 29.
+(Font)              scaled to size 8.0pt on input line 34.
 LaTeX Font Info:    Font shape `U/ntxexa/m/n' will be
-(Font)              scaled to size 6.1pt on input line 29.
-
-./writeup.tex:40: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   1
-l.40 ...width=1.0\textwidth]{"outputs/q3: #1.png"}
-                                                  
-? 
-<outputs/q3: #1.png, id=1, 200.6697pt x 298.4751pt>
-File: outputs/q3: #1.png Graphic file (type png)
-<use outputs/q3: #1.png>
-Package pdftex.def Info: outputs/q3: #1.png  used on input line 40.
-(pdftex.def)             Requested size: 166.94463pt x 248.32632pt.
-LaTeX Font Info:    Font shape `OT1/ntxtlf/m/n' will be
-(Font)              scaled to size 10.0pt on input line 41.
-./writeup.tex:44: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   2
-l.44 ...width=1.0\textwidth]{"outputs/q3: #2.png"}
-                                                  
-? 
-<outputs/q3: #2.png, id=3, 200.6697pt x 298.4751pt>
-File: outputs/q3: #2.png Graphic file (type png)
-<use outputs/q3: #2.png>
-Package pdftex.def Info: outputs/q3: #2.png  used on input line 44.
-(pdftex.def)             Requested size: 166.94463pt x 248.32632pt.
-./writeup.tex:48: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   3
-l.48 ...width=1.0\textwidth]{"outputs/q3: #3.png"}
-                                                  
-? 
-<outputs/q3: #3.png, id=4, 200.6697pt x 298.4751pt>
-File: outputs/q3: #3.png Graphic file (type png)
-<use outputs/q3: #3.png>
-Package pdftex.def Info: outputs/q3: #3.png  used on input line 48.
-(pdftex.def)             Requested size: 166.94463pt x 248.32632pt.
-LaTeX Font Info:    Font shape `OT1/ntxtlf/m/it' will be
-(Font)              scaled to size 10.95pt on input line 58.
+(Font)              scaled to size 6.1pt on input line 34.
+<outputs/map.png, id=1, 228.3732pt x 312.6882pt>
+File: outputs/map.png Graphic file (type png)
+<use outputs/map.png>
+Package pdftex.def Info: outputs/map.png  used on input line 61.
+(pdftex.def)             Requested size: 166.94463pt x 228.58969pt.
 
 
 [1
 
 {/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/loc
-al/texlive/2025/texmf-dist/fonts/enc/dvips/newtx/ntx-ot1-tlf.enc} <./outputs/q3
-: #1.png> <./outputs/q3: #2.png> <./outputs/q3: #3.png>]
-./writeup.tex:73: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   1
-l.73 ...width=0.4\textwidth]{"outputs/q5: #1.png"}
-                                                  
-? 
-<outputs/q5: #1.png, id=19, 312.9291pt x 339.4281pt>
-File: outputs/q5: #1.png Graphic file (type png)
-<use outputs/q5: #1.png>
-Package pdftex.def Info: outputs/q5: #1.png  used on input line 73.
-(pdftex.def)             Requested size: 202.3529pt x 219.4914pt.
-./writeup.tex:79: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   2
-l.79 ...width=0.4\textwidth]{"outputs/q5: #2.png"}
-                                                  
-? 
-<outputs/q5: #2.png, id=20, 370.7451pt x 339.4281pt>
-File: outputs/q5: #2.png Graphic file (type png)
-<use outputs/q5: #2.png>
-Package pdftex.def Info: outputs/q5: #2.png  used on input line 79.
-(pdftex.def)             Requested size: 202.3529pt x 185.26173pt.
-./writeup.tex:85: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   3
-l.85 ...width=0.4\textwidth]{"outputs/q5: #3.png"}
-                                                  
-? 
-<outputs/q5: #3.png, id=21, 370.7451pt x 339.4281pt>
-File: outputs/q5: #3.png Graphic file (type png)
-<use outputs/q5: #3.png>
-Package pdftex.def Info: outputs/q5: #3.png  used on input line 85.
-(pdftex.def)             Requested size: 202.3529pt x 185.26173pt.
+al/texlive/2025/texmf-dist/fonts/enc/dvips/newtx/ntx-ot1-tlf.enc}]
+LaTeX Font Info:    Font shape `OT1/ntxtlf/b/n' will be
+(Font)              scaled to size 10.95pt on input line 67.
 
 
-[2 <./outputs/q5: #1.png> <./outputs/q5: #2.png>]
-./writeup.tex:99: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   1
-l.99 ...width=1.0\textwidth]{"outputs/q7: #1.png"}
-                                                  
-? 
-<outputs/q7: #1.png, id=27, 205.0059pt x 300.4023pt>
-File: outputs/q7: #1.png Graphic file (type png)
-<use outputs/q7: #1.png>
-Package pdftex.def Info: outputs/q7: #1.png  used on input line 99.
-(pdftex.def)             Requested size: 166.94463pt x 244.63547pt.
-./writeup.tex:103: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   2
-l.103 ...idth=1.0\textwidth]{"outputs/q7: #2.png"}
-                                                  
-? 
-<outputs/q7: #2.png, id=28, 205.0059pt x 300.4023pt>
-File: outputs/q7: #2.png Graphic file (type png)
-<use outputs/q7: #2.png>
-Package pdftex.def Info: outputs/q7: #2.png  used on input line 103.
-(pdftex.def)             Requested size: 166.94463pt x 244.63547pt.
-./writeup.tex:107: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   3
-l.107 ...idth=1.0\textwidth]{"outputs/q7: #3.png"}
-                                                  
-? 
-<outputs/q7: #3.png, id=29, 205.0059pt x 300.4023pt>
-File: outputs/q7: #3.png Graphic file (type png)
-<use outputs/q7: #3.png>
-Package pdftex.def Info: outputs/q7: #3.png  used on input line 107.
-(pdftex.def)             Requested size: 166.94463pt x 244.63547pt.
-./writeup.tex:116: Undefined control sequence.
-<recently read> \eps 
-                     
-l.116 ...controls as $(v, \omega)$. I use an $\eps
-                                                  $ value of $0.25 * cell_wi...
+[2 <./outputs/map.png>]
 
-? 
-./writeup.tex:116: Undefined control sequence.
-<recently read> \eps 
-                     
-l.116 ...e if the robot was near a goal. The $\eps
-                                                  $ value must be less than ...
-
-? 
+[3]
+LaTeX Font Info:    Font shape `OT1/ntxtlf/m/n' will be
+(Font)              scaled to size 8.0pt on input line 152.
+LaTeX Font Info:    Font shape `OT1/ntxtlf/m/n' will be
+(Font)              scaled to size 6.1pt on input line 152.
+<outputs/critic_32x8/lr1E-02_nb_ep1000_qval.png, id=22, 418.4433pt x 327.8649pt
+>
+File: outputs/critic_32x8/lr1E-02_nb_ep1000_qval.png Graphic file (type png)
+<use outputs/critic_32x8/lr1E-02_nb_ep1000_qval.png>
+Package pdftex.def Info: outputs/critic_32x8/lr1E-02_nb_ep1000_qval.png  used o
+n input line 175.
+(pdftex.def)             Requested size: 166.94463pt x 130.80344pt.
+<outputs/lr1E-02_nb_ep100_test_qloss.png, id=23, 419.4069pt x 327.8649pt>
+File: outputs/lr1E-02_nb_ep100_test_qloss.png Graphic file (type png)
+<use outputs/lr1E-02_nb_ep100_test_qloss.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep100_test_qloss.png  used on input
+ line 178.
+(pdftex.def)             Requested size: 166.94463pt x 130.50827pt.
 
 
-[3 <./outputs/q5: #3.png> <./outputs/q7: #1.png> <./outputs/q7: #2.png> <./outp
-uts/q7: #3.png>]
-./writeup.tex:133: Argument of \mathaccentV has an extra }.
-<inserted text> 
-                \par 
-l.133 ...' = sign(v_{cmd}) * min(v_{cmd}, v^{\dot}
-                                                  _{max} * dt)
-? 
-Runaway argument?
-./writeup.tex:133: Paragraph ended before \mathaccentV was complete.
-<to be read again> 
-                   \par 
-l.133 ...' = sign(v_{cmd}) * min(v_{cmd}, v^{\dot}
-                                                  _{max} * dt)
-? 
-./writeup.tex:133: Missing $ inserted.
-<inserted text> 
-                $
-l.133 ...' = sign(v_{cmd}) * min(v_{cmd}, v^{\dot}
-                                                  _{max} * dt)
-? 
-./writeup.tex:133: Missing } inserted.
-<inserted text> 
-                }
-l.133 ...' = sign(v_{cmd}) * min(v_{cmd}, v^{\dot}
-                                                  _{max} * dt)
-? 
-./writeup.tex:133: Display math should end with $$.
-<to be read again> 
-                   \tex_par:D 
-l.133 ...' = sign(v_{cmd}) * min(v_{cmd}, v^{\dot}
-                                                  _{max} * dt)
-? 
-./writeup.tex:133: Extra }, or forgotten \endgroup.
-<recently read> }
-                 
-l.133 ...' = sign(v_{cmd}) * min(v_{cmd}, v^{\dot}
-                                                  _{max} * dt)
-? 
-./writeup.tex:133: Missing $ inserted.
-<inserted text> 
-                $
-l.133 ... = sign(v_{cmd}) * min(v_{cmd}, v^{\dot}_
-                                                  {max} * dt)
-? 
-./writeup.tex:134: You can't use `\eqno' in math mode.
-\veqno ->\@kernel@eqno 
-                       \aftergroup \ignorespaces 
-l.134 \end{equation}
-                    
-? 
-./writeup.tex:134: Missing $ inserted.
-<inserted text> 
-                $
-l.134 \end{equation}
-                    
-? 
-./writeup.tex:144: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   1
-l.144 ...idth=1.0\textwidth]{"outputs/q9: #1.png"}
-                                                  
-? 
-<outputs/q9: #1.png, id=37, 219.219pt x 327.8649pt>
-File: outputs/q9: #1.png Graphic file (type png)
-<use outputs/q9: #1.png>
-Package pdftex.def Info: outputs/q9: #1.png  used on input line 144.
-(pdftex.def)             Requested size: 166.94463pt x 249.7002pt.
-./writeup.tex:148: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   2
-l.148 ...idth=1.0\textwidth]{"outputs/q9: #2.png"}
-                                                  
-? 
-<outputs/q9: #2.png, id=38, 219.219pt x 327.8649pt>
-File: outputs/q9: #2.png Graphic file (type png)
-<use outputs/q9: #2.png>
-Package pdftex.def Info: outputs/q9: #2.png  used on input line 148.
-(pdftex.def)             Requested size: 166.94463pt x 249.7002pt.
-./writeup.tex:152: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   3
-l.152 ...idth=1.0\textwidth]{"outputs/q9: #3.png"}
-                                                  
-? 
-<outputs/q9: #3.png, id=39, 219.219pt x 327.8649pt>
-File: outputs/q9: #3.png Graphic file (type png)
-<use outputs/q9: #3.png>
-Package pdftex.def Info: outputs/q9: #3.png  used on input line 152.
-(pdftex.def)             Requested size: 166.94463pt x 249.7002pt.
-./writeup.tex:164: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   1
-l.164 ...dth=0.4\textwidth]{"outputs/q10: #1.png"}
-                                                  
-? 
-<outputs/q10: #1.png, id=40, 326.4195pt x 339.4281pt>
-File: outputs/q10: #1.png Graphic file (type png)
-<use outputs/q10: #1.png>
-Package pdftex.def Info: outputs/q10: #1.png  used on input line 164.
-(pdftex.def)             Requested size: 202.3529pt x 210.42253pt.
+[4]
+<outputs/lr1E-02_nb_ep30000_Q32x4_episodic_reward.png, id=27, 406.8801pt x 327.
+8649pt>
+File: outputs/lr1E-02_nb_ep30000_Q32x4_episodic_reward.png Graphic file (type p
+ng)
+<use outputs/lr1E-02_nb_ep30000_Q32x4_episodic_reward.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q32x4_episodic_reward.png  
+used on input line 212.
+(pdftex.def)             Requested size: 227.64894pt x 183.43799pt.
+<outputs/lr1E-02_nb_ep30000_Q32x4_qloss.png, id=28, 421.575pt x 327.8649pt>
+File: outputs/lr1E-02_nb_ep30000_Q32x4_qloss.png Graphic file (type png)
+<use outputs/lr1E-02_nb_ep30000_Q32x4_qloss.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q32x4_qloss.png  used on in
+put line 215.
+(pdftex.def)             Requested size: 227.64894pt x 177.04941pt.
+<outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png, id=29, 410.0118pt x 327.383
+1pt>
+File: outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png Graphic file (type png)
+
+<use outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png  use
+d on input line 218.
+(pdftex.def)             Requested size: 227.64894pt x 181.77469pt.
+<outputs/lr1E-02_nb_ep30000_Q32x4_time_to_goal.png, id=30, 406.8801pt x 327.864
+9pt>
+File: outputs/lr1E-02_nb_ep30000_Q32x4_time_to_goal.png Graphic file (type png)
+
+<use outputs/lr1E-02_nb_ep30000_Q32x4_time_to_goal.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q32x4_time_to_goal.png  use
+d on input line 221.
+(pdftex.def)             Requested size: 227.64894pt x 183.43799pt.
+<outputs/lr1E-02_nb_ep30000_Q32x4_epsilon.png, id=31, 416.2752pt x 327.8649pt>
+File: outputs/lr1E-02_nb_ep30000_Q32x4_epsilon.png Graphic file (type png)
+<use outputs/lr1E-02_nb_ep30000_Q32x4_epsilon.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q32x4_epsilon.png  used on 
+input line 224.
+(pdftex.def)             Requested size: 227.64894pt x 179.30066pt.
+<outputs/lr1E-02_nb_ep30000_Q32x4_qval.png, id=32, 408.8073pt x 327.8649pt>
+File: outputs/lr1E-02_nb_ep30000_Q32x4_qval.png Graphic file (type png)
+<use outputs/lr1E-02_nb_ep30000_Q32x4_qval.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q32x4_qval.png  used on inp
+ut line 227.
+(pdftex.def)             Requested size: 227.64894pt x 182.5775pt.
 
 
-[4 <./outputs/q9: #1.png> <./outputs/q9: #2.png> <./outputs/q9: #3.png>]
-./writeup.tex:170: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   2
-l.170 ...dth=0.4\textwidth]{"outputs/q10: #2.png"}
-                                                  
-? 
-<outputs/q10: #2.png, id=48, 326.4195pt x 339.4281pt>
-File: outputs/q10: #2.png Graphic file (type png)
-<use outputs/q10: #2.png>
-Package pdftex.def Info: outputs/q10: #2.png  used on input line 170.
-(pdftex.def)             Requested size: 202.3529pt x 210.42253pt.
-./writeup.tex:176: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   3
-l.176 ...dth=0.4\textwidth]{"outputs/q10: #3.png"}
-                                                  
-? 
-<outputs/q10: #3.png, id=49, 326.4195pt x 339.4281pt>
-File: outputs/q10: #3.png Graphic file (type png)
-<use outputs/q10: #3.png>
-Package pdftex.def Info: outputs/q10: #3.png  used on input line 176.
-(pdftex.def)             Requested size: 202.3529pt x 210.42253pt.
+[5 <./outputs/critic_32x8/lr1E-02_nb_ep1000_qval.png> <./outputs/lr1E-02_nb_ep1
+00_test_qloss.png>]
+
+[6 <./outputs/lr1E-02_nb_ep30000_Q32x4_episodic_reward.png> <./outputs/lr1E-02_
+nb_ep30000_Q32x4_qloss.png> <./outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.pn
+g> <./outputs/lr1E-02_nb_ep30000_Q32x4_time_to_goal.png> <./outputs/lr1E-02_nb_
+ep30000_Q32x4_epsilon.png> <./outputs/lr1E-02_nb_ep30000_Q32x4_qval.png>]
+<rollouts/step_174933.png, id=47, 228.3732pt x 327.8649pt>
+File: rollouts/step_174933.png Graphic file (type png)
+<use rollouts/step_174933.png>
+Package pdftex.def Info: rollouts/step_174933.png  used on input line 245.
+(pdftex.def)             Requested size: 202.3529pt x 290.52312pt.
+<rollouts/step_175002.png, id=48, 228.3732pt x 327.8649pt>
+File: rollouts/step_175002.png Graphic file (type png)
+<use rollouts/step_175002.png>
+Package pdftex.def Info: rollouts/step_175002.png  used on input line 248.
+(pdftex.def)             Requested size: 202.3529pt x 290.52312pt.
+<rollouts/step_175041.png, id=49, 228.3732pt x 327.8649pt>
+File: rollouts/step_175041.png Graphic file (type png)
+<use rollouts/step_175041.png>
+Package pdftex.def Info: rollouts/step_175041.png  used on input line 251.
+(pdftex.def)             Requested size: 202.3529pt x 290.52312pt.
+<rollouts/step_175047.png, id=50, 228.3732pt x 327.8649pt>
+File: rollouts/step_175047.png Graphic file (type png)
+<use rollouts/step_175047.png>
+Package pdftex.def Info: rollouts/step_175047.png  used on input line 254.
+(pdftex.def)             Requested size: 202.3529pt x 290.52312pt.
 
 
-[5 <./outputs/q10: #1.png> <./outputs/q10: #2.png>]
-./writeup.tex:195: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   1
-l.195 ...dth=0.4\textwidth]{"outputs/q11: #1.png"}
-                                                  
-? 
-<outputs/q11: #1.png, id=55, 326.4195pt x 339.4281pt>
-File: outputs/q11: #1.png Graphic file (type png)
-<use outputs/q11: #1.png>
-Package pdftex.def Info: outputs/q11: #1.png  used on input line 195.
-(pdftex.def)             Requested size: 202.3529pt x 210.42253pt.
+[7 <./rollouts/step_174933.png> <./rollouts/step_175002.png> <./rollouts/step_1
+75041.png> <./rollouts/step_175047.png>]
+File: outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png Graphic file (type png)
+
+<use outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png  use
+d on input line 273.
+(pdftex.def)             Requested size: 202.3529pt x 161.57306pt.
+LaTeX Font Info:    Font shape `OT1/ntxtlf/m/n' will be
+(Font)              scaled to size 10.0pt on input line 274.
+<outputs/lr5E-02_nb_ep30000_Q32x4_success_rate.png, id=59, 410.0118pt x 327.383
+1pt>
+File: outputs/lr5E-02_nb_ep30000_Q32x4_success_rate.png Graphic file (type png)
+
+<use outputs/lr5E-02_nb_ep30000_Q32x4_success_rate.png>
+Package pdftex.def Info: outputs/lr5E-02_nb_ep30000_Q32x4_success_rate.png  use
+d on input line 277.
+(pdftex.def)             Requested size: 202.3529pt x 161.57306pt.
+<outputs/lr1E-02_nb_ep30000_Q4x0_success_rate.png, id=60, 416.2752pt x 327.3831
+pt>
+File: outputs/lr1E-02_nb_ep30000_Q4x0_success_rate.png Graphic file (type png)
+<use outputs/lr1E-02_nb_ep30000_Q4x0_success_rate.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q4x0_success_rate.png  used
+ on input line 302.
+(pdftex.def)             Requested size: 161.8885pt x 127.31921pt.
+<outputs/lr1E-02_nb_ep20000_success_rate.png, id=61, 410.0118pt x 327.3831pt>
+File: outputs/lr1E-02_nb_ep20000_success_rate.png Graphic file (type png)
+<use outputs/lr1E-02_nb_ep20000_success_rate.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep20000_success_rate.png  used on i
+nput line 306.
+(pdftex.def)             Requested size: 167.95584pt x 134.10805pt.
+File: outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png Graphic file (type png)
+
+<use outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png>
+Package pdftex.def Info: outputs/lr1E-02_nb_ep30000_Q32x4_success_rate.png  use
+d on input line 310.
+(pdftex.def)             Requested size: 167.95584pt x 134.10805pt.
 
 
-[6 <./outputs/q10: #3.png>]
-./writeup.tex:201: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   2
-l.201 ...dth=0.4\textwidth]{"outputs/q11: #2.png"}
-                                                  
-? 
-<outputs/q11: #2.png, id=60, 381.5856pt x 339.4281pt>
-File: outputs/q11: #2.png Graphic file (type png)
-<use outputs/q11: #2.png>
-Package pdftex.def Info: outputs/q11: #2.png  used on input line 201.
-(pdftex.def)             Requested size: 202.3529pt x 179.99962pt.
-./writeup.tex:207: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   3
-l.207 ...dth=0.5\textwidth]{"outputs/q11: #3.png"}
-                                                  
-? 
-<outputs/q11: #3.png, id=61, 381.5856pt x 339.4281pt>
-File: outputs/q11: #3.png Graphic file (type png)
-<use outputs/q11: #3.png>
-Package pdftex.def Info: outputs/q11: #3.png  used on input line 207.
-(pdftex.def)             Requested size: 252.94499pt x 225.00212pt.
+[8 <./outputs/lr5E-02_nb_ep30000_Q32x4_success_rate.png>] (./writeup.bbl
+LaTeX Font Info:    Font shape `OT1/ntxtlf/m/it' will be
+(Font)              scaled to size 10.95pt on input line 10.
+)
 
-
-[7 <./outputs/q11: #1.png> <./outputs/q11: #2.png>]
-./writeup.tex:217: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   4
-l.217 ...dth=0.4\textwidth]{"outputs/q11: #4.png"}
-                                                  
-? 
-<outputs/q11: #4.png, id=68, 386.6445pt x 339.4281pt>
-File: outputs/q11: #4.png Graphic file (type png)
-<use outputs/q11: #4.png>
-Package pdftex.def Info: outputs/q11: #4.png  used on input line 217.
-(pdftex.def)             Requested size: 202.3529pt x 177.64307pt.
-./writeup.tex:224: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   5
-l.224 ...dth=0.4\textwidth]{"outputs/q11: #5.png"}
-                                                  
-? 
-<outputs/q11: #5.png, id=69, 386.6445pt x 339.4281pt>
-File: outputs/q11: #5.png Graphic file (type png)
-<use outputs/q11: #5.png>
-Package pdftex.def Info: outputs/q11: #5.png  used on input line 224.
-(pdftex.def)             Requested size: 202.3529pt x 177.64307pt.
-
-
-[8 <./outputs/q11: #3.png> <./outputs/q11: #4.png>]
-./writeup.tex:231: Illegal parameter number in definition of \@tempb.
-<to be read again> 
-                   6
-l.231 ...dth=0.5\textwidth]{"outputs/q11: #6.png"}
-                                                  
-? 
-<outputs/q11: #6.png, id=75, 386.6445pt x 339.4281pt>
-File: outputs/q11: #6.png Graphic file (type png)
-<use outputs/q11: #6.png>
-Package pdftex.def Info: outputs/q11: #6.png  used on input line 231.
-(pdftex.def)             Requested size: 252.94499pt x 222.05513pt.
-
-
-[9 <./outputs/q11: #5.png> <./outputs/q11: #6.png>] (./writeup.aux)
+[9 <./outputs/lr1E-02_nb_ep30000_Q4x0_success_rate.png> <./outputs/lr1E-02_nb_e
+p20000_success_rate.png>] (./writeup.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2020/03/25>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 8946 strings out of 473190
- 135577 string characters out of 5715801
- 516886 words of memory out of 5000000
- 32074 multiletter control sequences out of 15000+600000
- 580893 words of font info for 81 fonts, out of 8000000 for 9000
+ 11109 strings out of 473190
+ 183468 string characters out of 5715801
+ 602405 words of memory out of 5000000
+ 34211 multiletter control sequences out of 15000+600000
+ 589013 words of font info for 96 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 83i,9n,131p,705b,576s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 83i,8n,131p,982b,614s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/newtx/NewTXMI.pfb></us
-r/local/texlive/2025/texmf-dist/fonts/type1/public/newtx/NewTXMI7.pfb></usr/loc
-al/texlive/2025/texmf-dist/fonts/type1/public/newtx/txmiaX.pfb></usr/local/texl
-ive/2025/texmf-dist/fonts/type1/public/newtx/txsys.pfb></usr/local/texlive/2025
-/texmf-dist/fonts/type1/public/newtx/ztmb.pfb></usr/local/texlive/2025/texmf-di
-st/fonts/type1/public/newtx/ztmr.pfb></usr/local/texlive/2025/texmf-dist/fonts/
-type1/public/newtx/ztmri.pfb>
-Output written on writeup.pdf (9 pages, 1554952 bytes).
+r/local/texlive/2025/texmf-dist/fonts/type1/public/newtx/NewTXMI5.pfb></usr/loc
+al/texlive/2025/texmf-dist/fonts/type1/public/newtx/NewTXMI7.pfb></usr/local/te
+xlive/2025/texmf-dist/fonts/type1/public/newtx/txmiaX.pfb></usr/local/texlive/2
+025/texmf-dist/fonts/type1/public/newtx/txsys.pfb></usr/local/texlive/2025/texm
+f-dist/fonts/type1/public/newtx/ztmb.pfb></usr/local/texlive/2025/texmf-dist/fo
+nts/type1/public/newtx/ztmr.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1
+/public/newtx/ztmri.pfb>
+Output written on writeup.pdf (9 pages, 1526039 bytes).
 PDF statistics:
- 113 PDF objects out of 1000 (max. 8388607)
- 45 compressed objects within 1 object stream
+ 108 PDF objects out of 1000 (max. 8388607)
+ 48 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 106 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 81 words of extra memory for PDF output out of 10000 (max. 10000000)
 
