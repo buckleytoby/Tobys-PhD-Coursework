@@ -15,3 +15,6 @@ me 469/assignment 2/.DS_Store
 *.log
 *.gz
 *.tex
+sandbox/MNIST
+sandbox/my_profile_data.prof
+sandbox/cprofile_report.txt
