@@ -1,0 +1,28 @@
+# Ts,start
+ts_start: 
+    - [0, 0, 0, 0]
+    - [0, 0, 0, 0]
+    - [0, 0, 0, 0]
+    - [0, 0, 0, 0]
+    
+# Ts,end
+ts_end:
+    - [0, 0, 0, 0]
+    - [0, 0, 0, 0]
+    - [0, 0, 0, 0]
+    - [0, 0, 0, 0]
+
+# type:
+# screw trajectory with cubic time scaling
+# screw trajectory with quintic time scaling
+# Cartesian trajectory with cubic time scaling
+# Cartesian trajectory with quintic time scaling
+
+# screw or cartesian
+traj_type: screw
+time_scaling_type: cubic
+
+# T seconds
+duration: 1
+
+theta_init: [0, 0, 0, 0, 0, 0]
