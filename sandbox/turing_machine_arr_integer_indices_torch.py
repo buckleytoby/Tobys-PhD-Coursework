@@ -13,6 +13,7 @@ if PLOT:
     fig = plt.figure()
 
 import torch
+from torch import nn
 import torch.utils
 import torch.utils.data
 import cProfile, pstats
@@ -32,19 +33,20 @@ sparse neural networks
 https://medium.com/aimonks/sparse-neural-networks-and-pruning-trimming-the-fat-for-efficient-machine-learning-5b9d2920c526
 """
 # globals
-DEVICE = "cuda"
+DEVICE = "cpu"
 
-BATCH_SIZE = 10
-NB_CHANGES_PER_ITER = 2
+BATCH_SIZE = 10000
+NB_CHANGES_PER_ITER = 1
 MAX_NB_FORWARD_PASSES = 5
-NB_FREE_NODES = 100000
-PRINT_FREQ = 100
-NB_ITERS = 40000
+NB_FREE_NODES = 20000
+PRINT_FREQ = 1
+NB_ITERS = 4000000
 
 # https://stackoverflow.com/questions/50052295/how-do-you-load-mnist-images-into-pytorch-dataloader
 transform = transforms.Compose(
 [transforms.ToTensor(),])
 
+# 60k datapts
 mnist = MNIST(".", download=True, transform=transform, train=True)
 
 data_loader = torch.utils.data.DataLoader(mnist,
@@ -322,6 +324,7 @@ class State:
         # bool masks?
         self.input_mask = false_mask(nb_nodes)
         self.output_mask = false_mask(nb_nodes)
+        self.free_nodes_mask = false_mask(nb_nodes)
         self.identitya_mask = false_mask(nb_nodes)
         self.nand_mask = false_mask(nb_nodes)
         self.x1_daddy_mask = false_mask(nb_nodes)
@@ -331,6 +334,7 @@ class State:
         # indices arrays
         self.x1_daddies = zero_index(nb_nodes)
         self.x2_daddies = zero_index(nb_nodes)
+        self.depth_value = zero_index(nb_nodes)
         
     def setup(self, nb_inputs, nb_outputs):
         """
@@ -342,6 +346,7 @@ class State:
         # all inputs - input-mask, identity-a
         self.input_mask[i:i+nb_inputs] = True
         self.identitya_mask[i:i+nb_inputs] = True
+        self.depth_value[i:i+nb_inputs] = 0 # zero depth
         
         i += nb_inputs
         # all outputs - output-mask, nand-mask, x1-daddy-mask, x2-daddy-mask, settable-mask
@@ -350,13 +355,16 @@ class State:
         self.x1_daddy_mask[i:i+nb_outputs] = True
         self.x2_daddy_mask[i:i+nb_outputs] = True
         self.settable_mask[i:i+nb_outputs] = True
+        self.depth_value[i:i+nb_outputs] = 99 # max depth
         
         i += nb_outputs
         # free nodes - nand-mask, x1-daddy-mask, x2-daddy-mask, settable-mask
+        self.depth_value[i:] = 1 # middling depth
         self.nand_mask[i:] = True
         self.x1_daddy_mask[i:] = True
         self.x2_daddy_mask[i:] = True
         self.settable_mask[i:] = True
+        self.free_nodes_mask[i:] = True
         
         self.compile()
         
@@ -397,39 +405,40 @@ class State:
         return nb
     
     def array_forward_reset(self):
-        self.x1 = self.x1_default.clone()
-        self.x2 = self.x2_default.clone()
+        self.x1_arr = self.x1_default.clone()
+        self.x2_arr = self.x2_default.clone()
 
         self.array_forward_one_pass()
 
     def copy(self):
-        s = State(self.batch_size, self.nb_nodes)
+        # s = State(self.batch_size, self.nb_nodes)
 
-        s.x1_arr = self.x1_arr.clone()
-        s.x2_arr = self.x2_arr.clone()
+        # s.x1_arr = self.x1_arr.clone()
+        # s.x2_arr = self.x2_arr.clone()
 
-        s.input_mask = self.input_mask.clone()
-        s.output_mask = self.output_mask.clone()
-        s.identitya_mask = self.identitya_mask.clone()
-        s.nand_mask = self.nand_mask.clone()
-        s.x1_daddy_mask = self.x1_daddy_mask.clone()
-        s.x2_daddy_mask = self.x2_daddy_mask.clone()
-        s.settable_mask = self.settable_mask.clone()
+        # s.input_mask = self.input_mask.clone()
+        # s.output_mask = self.output_mask.clone()
+        # s.identitya_mask = self.identitya_mask.clone()
+        # s.nand_mask = self.nand_mask.clone()
+        # s.x1_daddy_mask = self.x1_daddy_mask.clone()
+        # s.x2_daddy_mask = self.x2_daddy_mask.clone()
+        # s.settable_mask = self.settable_mask.clone()
 
-        s.x1_daddies = self.x1_daddies.clone()
-        s.x2_daddies = self.x2_daddies.clone()
+        # s.x1_daddies = self.x1_daddies.clone()
+        # s.x2_daddies = self.x2_daddies.clone()
         
-        s.x1_daddy_mask_indices = self.x1_daddy_mask_indices.clone()
-        s.x2_daddy_mask_indices = self.x2_daddy_mask_indices.clone()
+        # s.x1_daddy_mask_indices = self.x1_daddy_mask_indices.clone()
+        # s.x2_daddy_mask_indices = self.x2_daddy_mask_indices.clone()
         
-        s.identitya_mask_indices = self.identitya_mask_indices.clone()
-        s.nand_mask_indices = self.nand_mask_indices.clone()
+        # s.identitya_mask_indices = self.identitya_mask_indices.clone()
+        # s.nand_mask_indices = self.nand_mask_indices.clone()
         
-        s.output_mask_indices = self.output_mask_indices.clone()
-        s.input_mask_indices = self.input_mask_indices.clone()
+        # s.output_mask_indices = self.output_mask_indices.clone()
+        # s.input_mask_indices = self.input_mask_indices.clone()
         
-        s.settable_mask_indices = self.settable_mask_indices.clone()
+        # s.settable_mask_indices = self.settable_mask_indices.clone()
 
+        s = copy.deepcopy(self)
         return s
 
     def array_set_input(self, input):
@@ -491,12 +500,45 @@ class State:
         
         pass
     
+    def randomize_edge_acyclical(self, daddies):
+        # get settable nodes, size (nb_settable,)
+        settable_nodes = self.settable_mask_indices
+
+        nb_settable = len(settable_nodes)
+        nb_nodes = self.nb_nodes
+
+        # for outputs (depth = 99)
+        viable_daddies = np.zeros(nb_nodes)
+        viable_daddies[self.depth_value < 99] = True
+
+        # for each settable node (id), get viable daddies (true/false), size (nb_settable, nb_nodes)
+        settable_nodes_daddies = np.zeros((nb_nodes, nb_nodes))
+        settable_nodes_daddies[self.output_mask_indices] = viable_daddies
+
+        # for free nodes (depth = 1)
+        viable_daddies = np.zeros(nb_nodes)
+        viable_daddies[self.depth_value < 1] = True
+        settable_nodes_daddies[self.free_nodes_mask] = viable_daddies
+
+        # downmask
+        settable_nodes_daddies = settable_nodes_daddies[settable_nodes]
+
+        # convert to indices
+        settable_nodes_daddies_indices = [np.nonzero(row)[0] for row in settable_nodes_daddies]
+
+        # random choice, size (nb_settable, )
+        choices = np.array([np.random.choice(row) for row in settable_nodes_daddies_indices])
+        
+        daddies[settable_nodes] = torch.tensor(choices, dtype=torch.int)
+        
+        pass
+    
     def randomize_edges(self):
         """
         
         """
-        self.randomize_edge(self.x1_daddies)
-        self.randomize_edge(self.x2_daddies)
+        self.randomize_edge_acyclical(self.x1_daddies)
+        self.randomize_edge_acyclical(self.x2_daddies)
         
         
     
@@ -806,13 +848,15 @@ def main():
     h = []
 
     # loop vars
-    avg_l = 0
-    old_avg_l = 0
+    avg_l = l
+    old_avg_l = l
+    old_old_avg_l = l # used for troubleshooting
 
     while not done:
         c += 1
 
         # reset loop vars
+        old_old_avg_l = old_avg_l
         avg_l = 0
         old_avg_l = 0
 
@@ -846,7 +890,7 @@ def main():
 
         # test old a new batch loss. If you want better stats, increase batch_size (rather than putting this section in a for-loop)
         # new batch
-        # xb, yint, ybgt = next(batch_gen)
+        xb, yint, ybgt = next(batch_gen)
 
         # copy
         # new_tm = tm.clone()
@@ -869,6 +913,9 @@ def main():
             print(loss(xb, yint, ybgt, tm, old=False))
             pass
 
+        if old_avg_l > old_old_avg_l:
+            # used for debugging when the batch is fixed
+            pass
 
         # save?
         if True: # c%every == 0:
@@ -934,9 +981,9 @@ def main():
             # reset
             min_avg_loss = 0
 
-        # early exit
-        if old_avg_l < eps:
-            done = True
+        # # early exit
+        # if old_avg_l < eps:
+        #     done = True
 
         if c > NB_ITERS:
             done = True
