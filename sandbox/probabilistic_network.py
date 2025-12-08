@@ -38,6 +38,7 @@ During inference, could "compile" to remove all dead neurons
 
 """
 BATCH_SIZE = 64
+DEVICE = 'cuda'
 
 transform = transforms.Compose(
 [transforms.ToTensor(),
@@ -60,10 +61,10 @@ if PLOT:
     plt.show()
     plt.colorbar()
 
-data_loader = torch.utils.data.DataLoader(mnist,
-                                          batch_size=BATCH_SIZE,
-                                          shuffle=True,
-                                        )
+data_loader = DataLoader(mnist,
+                        batch_size=BATCH_SIZE,
+                        shuffle=True,
+                    )
 
 class ProbabilisticPass(nn.Module):
     """
@@ -204,7 +205,7 @@ class ProbabilisticDownsample(nn.Module):
         # self.productivity = nn.Parameter(
         #     torch.zeros((nb_inputs))
         # )
-        self.productivity = torch.ones((nb_inputs))
+        self.productivity = torch.ones((nb_inputs), device=DEVICE)
 
         # self.register_full_backward_hook(self.module_backward_hook)
 
@@ -358,13 +359,26 @@ class ProbabilisticDownsample(nn.Module):
         return vals, inds
     
     def get_productive_inputs(self):
-        y = torch.zeros(self.nb_inputs)
+        y = torch.zeros(self.nb_inputs, device=DEVICE)
 
         vals, inds = self.get_n_productive()
 
         y[inds] = vals
 
         return y
+    
+class StdDevPooling(nn.MaxPool1d):
+    """
+    just like max pooling, but instead of the max val within a window, computes the std dev for that window
+    """
+    def forward(self, inputs):
+        # compute std dev along batch dim
+        std = inputs.std(dim=1)
+        
+        
+        
+        pass
+        
 
     
 def module_backward_hook(module, grad_input, grad_output):
@@ -394,6 +408,7 @@ def main():
 
 
     nb_outputs = 10
+    
 
     # pp = ProbabilisticPass(nb_hidden)
     # handle = pp.register_full_backward_hook(module_backward_hook)
@@ -405,16 +420,27 @@ def main():
     model = nn.Sequential(
         # ElementWiseLinear(nb_inputs),
         # ElementWiseLinear(nb_inputs),
-        pds,
+        # pds,
 
-        nn.Linear(nb_inputs_2, 128),
+        nn.Linear(nb_inputs, 128),
         nn.LeakyReLU(),
 
         nn.Linear(128, 1024), # todo: multi-headed prob down-sample?
-        ProbabilisticDownsample(1024, 128),
+        # ProbabilisticDownsample(1024, 128),
         nn.LeakyReLU(),
+        
+        # # baseline -> works well, more params
+        # nn.Linear(1024, 128),
+        # nn.LeakyReLU(),
+        
+        # Test 1. max-pool -> works well, fewer params
+        #   assumes that activation value is a proxy for how important a neuron is w.r.t. the output
+        nn.MaxPool1d(kernel_size=int(1024/128)),
 
-        nn.Linear(128, 10)
+
+
+        # final layer to get outputs
+        nn.Linear(128, 10),
 
         # nn.Linear(nb_inputs_2, nb_inputs_2),
         # ProbabilisticDownsample(nb_inputs_2, 128), # make sense to do before the activation I think... a bit more efficient I think
@@ -435,12 +461,13 @@ def main():
         # nn.Linear(16, 32),
         # ProbabilisticDownsample(32, 10),
     )
+    model = model.to(DEVICE)
 
     # optimizer - weight_decay should be small ~1e-3
     opt = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-5)
 
     # classification loss
-    loss_fn = torch.nn.CrossEntropyLoss()
+    loss_fn = torch.nn.CrossEntropyLoss() # applies softmax to its input
 
 
     total_params = sum(p.numel() for p in model.parameters())
@@ -457,6 +484,9 @@ def main():
         with tqdm.tqdm(total = len(data_loader), postfix=metrics) as t:
             for idx, batch in enumerate(data_loader):
                 inputs, labels = batch
+                
+                inputs = inputs.to(DEVICE)
+                labels = labels.to(DEVICE)
 
                 if idx > nb_batches:
                     break
@@ -512,8 +542,9 @@ def main():
             p2 /= p2.max()
 
             if PLOT:
+                p3 = p2.cpu()
                 plt.clf()
-                plt.imshow(p2, vmin=0, vmax=1)
+                plt.imshow(p3, vmin=0, vmax=1)
                 plt.show()
                 plt.colorbar()
                 fig.canvas.draw()
