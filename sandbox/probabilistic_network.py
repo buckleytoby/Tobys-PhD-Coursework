@@ -38,7 +38,7 @@ During inference, could "compile" to remove all dead neurons
 
 """
 BATCH_SIZE = 64
-DEVICE = 'cuda'
+DEVICE = 'cpu'
 
 transform = transforms.Compose(
 [transforms.ToTensor(),
@@ -369,16 +369,70 @@ class ProbabilisticDownsample(nn.Module):
     
 class StdDevPooling(nn.MaxPool1d):
     """
-    just like max pooling, but instead of the max val within a window, computes the std dev for that window
+    just like max pooling, but instead of the max val within a window, computes the std dev for that window.
+
+    Assumes that high output variance is correlated with neuron importance
     """
-    def forward(self, inputs):
-        # compute std dev along batch dim
-        std = inputs.std(dim=1)
+    def forward(self, input):
+        """
+        compute std dev per neuron, across the batch
+        for each window, downsample using the highest score (std-dev)
+        """
+        inputs = input
+        b, v = inputs.shape
+        nb_outputs = int(v / self.kernel_size)
+
+        # compute all std dev's along batch dim, size: (nb_inputs,)
+        std = inputs.std(dim=0)
+
+        y = torch.zeros((b, nb_outputs))
         
+        for i in range(nb_outputs):
+            j = i * self.kernel_size
+
+            # max std of this window
+            argmaxstd = j + torch.argmax(std[j:j+self.kernel_size])
+            y[:, i] = input[:, argmaxstd]
+
+        # TODO: vectorize
         
+        return y
         
-        pass
+
+class StdDevTopKPooling(nn.Module):
+    def __init__(self,
+                 nb_outputs,
+                  *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.nb_outputs = nb_outputs
+
+    def forward(self, input):
+        """
+        compute std dev per neuron, across the batch
+        from one window, get top-k
+        """
+        inputs = input
+        b, v = inputs.shape
+
+        # compute all std dev's along batch dim, size: (nb_inputs,)
+        std = inputs.std(dim=0)
+
+        y = torch.zeros((b, self.nb_outputs))
+
+        vals, inds = torch.topk(std, self.nb_outputs)
+
+        # maintain order
+        inds2, _ = torch.sort(inds)
+        # inds2 = inds # testing. way worse performance if you don't sort the inds
+
+
+        self.inds = inds2
         
+        for i in range(b):
+            y[i] = input[i, inds2]
+        
+        return y
 
     
 def module_backward_hook(module, grad_input, grad_output):
@@ -400,11 +454,11 @@ def get_num_correct(preds, labels):
 
 def main():
     nb_inputs = 28 * 28
-    nb_inputs_2 = int(nb_inputs/2)
+    nb_inputs_2 = int(nb_inputs/4)
 
-    nb_hidden = 128
-    nb_hidden_big = 128
-    nb_hidden_small = 128 # 16
+    nb_hidden = nb_inputs_2
+    nb_hidden_big = nb_inputs_2
+    nb_hidden_small = nb_inputs_2 # 16
 
 
     nb_outputs = 10
@@ -413,8 +467,9 @@ def main():
     # pp = ProbabilisticPass(nb_hidden)
     # handle = pp.register_full_backward_hook(module_backward_hook)
 
-    pds = ProbabilisticDownsample(nb_inputs, nb_inputs_2)
+    # pds = ProbabilisticDownsample(nb_inputs, nb_inputs_2)
     # handle = pds.register_full_backward_hook(module_backward_hook)
+    downsampler = StdDevTopKPooling(nb_inputs_2)
 
     # make a simple NN
     model = nn.Sequential(
@@ -422,25 +477,45 @@ def main():
         # ElementWiseLinear(nb_inputs),
         # pds,
 
-        nn.Linear(nb_inputs, 128),
+        # Test 1. -> works well
+        # StdDevPooling(kernel_size=int(nb_inputs / nb_inputs_2)),
+
+        # Test 2.
+        downsampler,
+
+        nn.Linear(nb_inputs_2, nb_inputs_2),
         nn.LeakyReLU(),
 
-        nn.Linear(128, 1024), # todo: multi-headed prob down-sample?
-        # ProbabilisticDownsample(1024, 128),
+        nn.Linear(nb_inputs_2, nb_inputs_2),
         nn.LeakyReLU(),
+
+        nn.Linear(nb_inputs_2, nb_inputs_2),
+        nn.LeakyReLU(),
+
+        nn.Linear(nb_inputs_2, nb_inputs_2),
+        nn.LeakyReLU(),
+
+        # nn.Linear(128, 1024), # todo: multi-headed prob down-sample?
+        # # ProbabilisticDownsample(1024, 128),
+
+        # # downsample
+        # # StdDevTopKPooling(nb_outputs=128),
+        # nn.LeakyReLU(),
         
         # # baseline -> works well, more params
         # nn.Linear(1024, 128),
         # nn.LeakyReLU(),
         
-        # Test 1. max-pool -> works well, fewer params
-        #   assumes that activation value is a proxy for how important a neuron is w.r.t. the output
-        nn.MaxPool1d(kernel_size=int(1024/128)),
+        # # Test 1. max-pool -> works well, fewer params
+        # #   assumes that activation value is a proxy for how important a neuron is w.r.t. the output
+        # nn.MaxPool1d(kernel_size=int(1024/128)),
 
+        # # Test 2. std-dev-pool --> works well
+        # StdDevPooling(kernel_size=int(1024/128)),
 
 
         # final layer to get outputs
-        nn.Linear(128, 10),
+        nn.Linear(nb_inputs_2, nb_outputs),
 
         # nn.Linear(nb_inputs_2, nb_inputs_2),
         # ProbabilisticDownsample(nb_inputs_2, 128), # make sense to do before the activation I think... a bit more efficient I think
@@ -501,7 +576,7 @@ def main():
                 # o2.backward(retain_graph=True)
 
                 # update the productivity
-                pds.update()
+                # pds.update()
 
                 l = loss_fn(outputs, labels)
                 opt.zero_grad()
@@ -532,7 +607,11 @@ def main():
 
         if True:
             # p = pds.productivity.clone().detach()
-            p = pds.get_productive_inputs()
+            # p = pds.get_productive_inputs()
+            inds = downsampler.inds
+
+            p = torch.zeros(28*28)
+            p[inds] = 1.0
 
             p2 = torch.unflatten(p, 0, (28, 28))
 
