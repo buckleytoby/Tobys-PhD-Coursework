@@ -39,6 +39,56 @@ class State:
         # current state values
         self.current = {}
 
+    def reset(self):
+        """
+        required state vars:
+            th
+            dth
+            ddth
+            tau_cmd
+            ang_err
+            lin_err
+        """
+        keys = [
+            "th",
+            "dth",
+            "ddth",
+            "tau_cmd",
+            "ang_err",
+            "lin_err",
+        ]
+
+        self.current = {}
+
+        for key in keys:
+            self.current[key] = 0.0
+
+    def get_key(self, key):
+        return self.current[key]
+
+    def get_step_inputs(self):
+        keys = [
+            "th",
+            "dth",
+            "tau_cmd"
+        ]
+        s = [self.get_key(key) for key in keys]
+        return s
+    
+    def update_key(self, key, val):
+        # first record old value
+        self.record_key(key)
+
+        # now set
+        self.current[key] = val
+
+    def record_key(self, key):
+        self.history[key].append(self.get_key(key))
+
+    def record(self):
+        for key in self.current.keys():
+            self.record_key(key)
+
     def load(self):
         name = "./input.txt"
         arr = np.loadtxt(name)
@@ -88,15 +138,25 @@ class Controller:
         self.tau_damping = 0.5 # N*m/(rad/s) --> tau_damping_i = -0.5 * theta_dot_i
 
 class Simulator:
-    def __init__(self) -> None:
+    def __init__(self, 
+                 dt = 1e-3,
+                 ) -> None:
+        self.dt = dt
         
-
-        # make my composed classes
-        pass
+        # my members
+        self.g = np.array([0, 0, -9.81]).T
+        self.t = 0
 
     def forward(self, th, dth, ddth):
         """
         first order euler integration
+        input: 
+            th - theta
+            dth - delta-theta aka theta_dot
+            ddth - delta-delta-theta aka theta_dot_dot
+        output:
+            thp - theta-prime aka the new theta
+            dthp - delta-theta-prime ak athe new delta-theta
         """
         thp, dthp = mr.EulerStep(
             th.squeeze(),
@@ -104,54 +164,94 @@ class Simulator:
             ddth.squeeze(),
             self.dt
         )
+
+        # add onto total time
+        self.t += self.dt
+
         return thp.reshape([6, 1]), dthp.reshape([6, 1])
 
-    def step(self):
-        mr.ForwardDynamics(
+    def step(self, state: State, ftip):
+        """
+        inputs:
+            thl - theta list
+            dthl - delta-theta list
+            taul - tau-list aka joint torque cmd list
+            ftip - spatial force at the tip, frame n+1
+        """
+        thl, dthl, taul = state.get_step_inputs()
+
+        ddth = mr.ForwardDynamics(
             thl,
             dthl,
             taul,
-            g,
+            self.g,
             ftip,
             Mlist,
             Glist,
             Slist
         )
 
-
         # first order euler integration
-        thp, dthp = self.forward(thetalist, dthetalist, ddth)
+        thp, dthp = self.forward(thl, dthl, ddth)
 
-        # save new state vars
-        thetalist = thp
-        dthetalist = dthp
+        state.update_key("th", thp)
+        state.update_key("dth", dthp)
 
-    def run(self):
-        pass
+    def get_time(self):
+        return self.t
+
+    def run(self, state, T):
+        # reset some stuff
+        self.t = 0
+
+        # save refs
+        self.state = state
+
+        done = True
+        while not done:
+            # update/record state info
+            state.record()
+
+            # get controller feedback terms
+            controller.step(state)
+
+            # step the forward dynamics
+            self.step(state, ftip)
+
+            # check end condition
+            t = self.get_time()
+
+            if t > T:
+                done = True
 
 
 def main():
     # load the config
     config = OmegaConf.create("./input.yaml")
 
+    T = config.duration
+
+    # class instances
+    state = State()
+
     # make the simulator
     sim = Simulator()
 
     # run the sim
-    sim.run()
+    sim.run(state, T)
 
     # save the outputs
     # 1. coppelia-compatible csv
-    state.save("coppelia")
+    state.save_coppelia("coppelia")
 
     # 2. csv of time, joint-angles
-    state.save_time_history("th")
+    state.save_time_history("th", "joint_angles")
 
     # 3. csv of time, cmd joint torques
-    state.save_time_history("tau_cmd")
+    state.save_time_history("tau_cmd", "joint_torque_cmds")
 
     # 4. csv of time, angular error, linear error
-    state.save_time_history(["ang_err", "lin_err"])
+    state.save_time_history(["ang_err", "lin_err"], "ang_and_lin_err")
 
 
     pass
