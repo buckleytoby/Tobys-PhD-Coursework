@@ -1,0 +1,56 @@
+ts_start:
+- - -1
+  - 0
+  - 0
+  - 0.7
+- - 0
+  - 0
+  - 1
+  - 0.181
+- - 0
+  - 1
+  - 0
+  - 0.1
+- - 0
+  - 0
+  - 0
+  - 1
+ts_end:
+- - 1
+  - 0
+  - 0
+  - 0.181
+- - 0
+  - 1
+  - 0
+  - 0.7
+- - 0
+  - 0
+  - -1
+  - 0.1
+- - 0
+  - 0
+  - 0
+  - 1
+traj_type: screw
+time_scaling_type: quintic
+controller_type: joint_space
+Ki: 1.0e-05
+Kp: 10.0
+Kd: 1.0
+duration: 10.0
+theta_init_perturbation:
+- 0.0
+- 0.0
+- 0.1
+- 0.1
+- 0.1
+- 0.1
+joint_torque_limits:
+- 1000
+- 1000
+- 1000
+- 1000
+- 1000
+- 1000
+folder: run_2

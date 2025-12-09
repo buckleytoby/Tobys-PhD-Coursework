@@ -551,7 +551,7 @@ def main():
     metrics = {"avg_l": 0.0, "avg_sr": 0.0}
 
     nb_epochs = 10000
-    nb_batches = 9999
+    nb_batches = 20
     for _ in range(nb_epochs): # tqdm.tqdm(range(nb_epochs)):
         # reset
 
