@@ -82,167 +82,57 @@ def get_batch():
         y = torch.tensor(y, dtype=torch.long)
         yield x, y
 
-
-
-
-class RoamingGaussianDownsample1DLearnableStats(nn.Module):
+class NNWindow(nn.Module):
     """
-    each output pixel has an associated roaming gaussian with a learnable mean and variance
+    set window size. NN to output window center
     """
     def __init__(self, 
                  in_w,
-                 nb_gaussians,
+                 kernel_size,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.in_w = in_w
-        self.nb_gaussians = nb_gaussians
-
-        xpos = np.linspace(-1., 1., self.in_w)
-        xpos2 = torch.from_numpy(xpos).float()
-
-        self.xpos = torch.tile(xpos2, (self.nb_gaussians, 1))
-
-        self.mean = nn.Parameter(
-            torch.rand((self.nb_gaussians, 1)) * 2.0 - 1.0
-            )
-        self.std = nn.Parameter(
-            torch.rand((self.nb_gaussians, 1)) + 0.5
-            )
+        self.kernel_size = kernel_size
         
-    def log_prob(self, value):
-        # Helper to calculate log probability of a value under the current distribution
-        distribution = Normal(self.mean, self.std)
-        return distribution.log_prob(value)
-
-    def forward(self, inputs):
-        # get the x positions
-        xpos = self.xpos
-
-        # Calculate log probability for each point
-        log_prob_values = self.log_prob(xpos)
-
-        # Convert log probabilities to actual PDF values
-        pdf_values = torch.exp(log_prob_values)
-
-        weights = pdf_values.T
-
-        y = inputs @ weights
-
-        return y
-    
-
-
-class RoamingGaussianDownsample1DNNStats(nn.Module):
-    """
-    learn a NN which outputs the gaussian stats as a function of the input.
-
-    hmm it kinda seems like the gaus_nn could take on the same form as a UNet or transformer, and then it's like, well am I actually being any more efficient than just eschewing this layer altogether and simply using a transformer?
-    """
-    def __init__(self, 
-                 in_w,
-                 nb_gaussians,
-                 *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        self.in_w = in_w
-        self.nb_gaussians = nb_gaussians
-
-        xpos = np.linspace(-1., 1., self.in_w)
-        xpos2 = torch.from_numpy(xpos).float().to(DEVICE)
-
-        self.xpos = torch.tile(xpos2, (self.nb_gaussians, 1))
-        self.xpos = torch.unsqueeze(self.xpos, dim=0)
-
         n1 = 128
-        self.gaus_nn = nn.Sequential(
+        self.window_nn = nn.Sequential(
             nn.Linear(in_w, n1),
             nn.LeakyReLU(),
             nn.Linear(n1, n1),
             nn.LeakyReLU(),
-            nn.Linear(n1, n1),
+            nn.Linear(n1, 1),
+            nn.Tanh(),
         )
+        
+        
+        xpos = np.linspace(-1., 1., self.in_w)
+        xpos2 = torch.from_numpy(xpos).float().to(DEVICE)
 
-        self.gaus_mean_head = nn.Sequential(
-            nn.Linear(n1, nb_gaussians),
-            nn.Tanh() # smooth, range [-1, 1] because we normalize pixel values to [-1, 1]
-        )
-
-        self.gaus_std_head = nn.Sequential(
-            nn.Linear(n1, nb_gaussians),
-            nn.Softplus() # smooth, no negative outputs
-        )
+        self.xpos = torch.unsqueeze(xpos2, dim=0)
         
 
         self.register_full_backward_hook(self.module_backward_hook)
         
-    def log_prob(self, mean, std, value):
-        # # Helper to calculate log probability of a value under the current distribution
-        # distribution = Normal(mean, std)
-        # return distribution.log_prob(value)
-        loc = mean
-        scale = std
-        var = scale**2
-
-        log_scale = (
-            torch.log(scale)
-        )
-
-        y = (
-            -((value - loc) ** 2) / (2 * var)
-            - log_scale
-            - np.log(np.sqrt(2 * np.pi))
-        )
-        y.retain_grad()
-        self.logproby = y
-        return y
-
     def forward(self, inputs):
-        b = inputs.shape[0]
-        # get the x positions
-        xpos = torch.tile(self.xpos, (b, 1, 1))
-
-        # get means and stds from the nn
-        gaus_features = self.gaus_nn(inputs)
-        gaus_features.retain_grad()
-        self.gaus_features = gaus_features
         
-        means = self.gaus_mean_head(gaus_features)
-        stds = 0.5 * torch.ones([1, 1], device=DEVICE) # self.gaus_std_head(gaus_features)
-
-
-        means2 = torch.unsqueeze(means, dim=-1)
-        stds2 = torch.unsqueeze(stds, dim=-1)
-
-        means2.retain_grad()
-        self.means2 = means2
-
-        # Calculate log probability for each point
-        log_prob_values = self.log_prob(means2, stds2, xpos)
-        log_prob_values.retain_grad()
-        self.log_prob_values = log_prob_values
-
-        # Convert log probabilities to actual PDF values
-        pdf_values = torch.exp(log_prob_values)
-
-        weights = pdf_values
+        window_center = self.window_nn(inputs)
+        window_center.retain_grad()
+        self.window_center = window_center
+        
+        idx = int(window_center.detach() + self.in_w / 2.0)
+        
+        weights = window_center / window_center.detach().mean()
         weights.retain_grad()
         self.weights = weights
-
-        # add gaussian dim
-        # x2 = torch.unsqueeze(inputs, dim=1)
-
-        y = weights @ inputs.T
+        
+        y = inputs[:, idx - self.kernel_size:idx + self.kernel_size + 1] * weights
         y.retain_grad()
         self.y = y
+                
+        return y
+        
 
-        y2 = torch.squeeze(y, dim=-1)
-        y2.retain_grad()
-        self.y2 = y2
-
-        # print(means2)
-
-        return y2
 
     def module_backward_hook(self, module, grad_input, grad_output):
         # print("test")
@@ -260,9 +150,12 @@ def get_num_correct(preds, labels):
 
 def main():
     nb_inputs = 16
-    nb_gaussians = 1
+    kernel_size = 2
+    
 
-    nb_hidden = 16
+    nnwindow_output = 1 + 2 * kernel_size
+    
+    nb_hidden = 64
 
     nb_outputs = 2
     
@@ -275,9 +168,9 @@ def main():
         # RoamingGaussianDownsample1DLearnableStats(nb_inputs, nb_gaussians),
 
         # 3. 
-        RoamingGaussianDownsample1DNNStats(nb_inputs, nb_gaussians),
+        NNWindow(nb_inputs, kernel_size=2),
 
-        nn.Linear(nb_gaussians, nb_hidden),
+        nn.Linear(nnwindow_output, nb_hidden),
         nn.LeakyReLU(),
 
         # final layer to get outputs
