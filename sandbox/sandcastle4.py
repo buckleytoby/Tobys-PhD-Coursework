@@ -41,42 +41,65 @@ def get_batch():
 
     """
     h = 16 # history length
-    b = 1
+    b = BATCH_SIZE
     w = 1 # +- w around the center index
     
-    imin = 6
-    imax = 9
+    imin0 = 9
+    imax0 = 10
+    
 
     while True:
-        p = np.random.rand()
+        x = np.zeros((b, h))
+        y = np.zeros((b,))
+        
+        p = np.random.random((b,))
+        
+        p1 = p > 0.5
+        p2 = ~p1
 
-        if p > 0.5:
-            # rectangle: ____----_____
-            i = np.random.randint(imin, imax) #  np.random.randint(0, h)
+        nb_0 = p1.sum()
+        nb_1 = p2.sum()
+        
+        y[p1] = 0.0
+        y[p2] = 1.0
+        
+        # rectangle: ____----_____
+        i = np.random.randint(imin0, imax0, size = (nb_0,)) #  np.random.randint(0, h)
+        imin = i - w
+        imax = i + w + 1
+        imin[imin<0] = 0
+        imax[imax > h] = h
 
-            imin = max(0, i-w)
-            imax = min(h, i+w+1)
+        x[p1, imin] = 1.0
+        x[p1, i] = 1.0
+        x[p1, imax] = 1.0
 
-            x = np.zeros((b, h))
-            x[:, imin:imax] = 1.0
 
-            x /= x.sum()
+        # triangle: ____/^\_____
+        # i = np.random.randint(imin0, imax0, (nb_1,)) # np.random.randint(0, h)
+        # imin = i - w
+        # imax = i + w + 1
+        # imin[imin<0] = 0
+        # imax[imax > h] = h
 
-            y = [0]
 
-        else:
-            # triangle: ____/^\_____
-            i = np.random.randint(imin, imax) # np.random.randint(0, h)
-            imin = max(0, i-w)
-            imax = min(h, i+w+1)
+        # x[p2, imin] = 1.0
+        # x[p2, i] = 2.0
+        # x[p2, imax] = 1.0
+        
+        # same shape, but shifted
+        i = np.random.randint(imin0, imax0, (nb_1,)) # np.random.randint(0, h)
+        imin = i - w
+        imax = i + w + 1
+        imin[imin<0] = 0
+        imax[imax > h] = h
 
-            x = np.zeros((b, h))
-            x[:, imin:imax] = 1.0
-            x[:, i] = 2.0
 
-            x /= x.sum()
+        x[p2, imin] = 1.0
+        x[p2, i] = 1.0
+        x[p2, imax] = 1.0
 
-            y = [1]
+        x /= x.sum()
 
         x = torch.tensor(x, dtype=torch.float)
         y = torch.tensor(y, dtype=torch.long)
@@ -115,18 +138,21 @@ class NNWindow(nn.Module):
         self.register_full_backward_hook(self.module_backward_hook)
         
     def forward(self, inputs):
+        b = inputs.shape[0]
         
         window_center = self.window_nn(inputs)
         window_center.retain_grad()
         self.window_center = window_center
         
-        idx = int(window_center.detach() + self.in_w / 2.0)
+        idx = (window_center.detach() + self.in_w / 2.0).to(torch.int).squeeze()
         
         weights = window_center / window_center.detach().mean()
         weights.retain_grad()
         self.weights = weights
         
-        y = inputs[:, idx - self.kernel_size:idx + self.kernel_size + 1] * weights
+        for i in range(b):
+            y = inputs[i, idx[i] - self.kernel_size:idx[i] + self.kernel_size + 1] * weights
+            
         y.retain_grad()
         self.y = y
                 
