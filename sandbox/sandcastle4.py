@@ -39,83 +39,15 @@ outputs:
 
 """
     
-def get_batc_2():
-    h = 16 # history length
-    b = BATCH_SIZE
-    w = 1 # +- w around the center index
-    
-    imin0 = 9
-    imax0 = 10
-    
-
-    while True:
-        x = np.zeros((b, h))
-        y = np.zeros((b,))
-        
-        p = np.random.random((b,))
-        
-        p1 = p > 0.5
-        p2 = ~p1
-
-        nb_0 = p1.sum()
-        nb_1 = p2.sum()
-        
-        y[p1] = 0.0
-        y[p2] = 1.0
-        
-        # rectangle: ____----_____
-        i = np.random.randint(imin0, imax0, size = (nb_0,)) #  np.random.randint(0, h)
-        imin = i - w
-        imax = i + w
-        imin[imin<0] = 0
-        imax[imax > h] = h
-
-        x[p1, imin] = 1.0
-        x[p1, i] = 1.0
-        x[p1, imax] = 1.0
-
-
-        # triangle: ____/^\_____
-        # i = np.random.randint(imin0, imax0, (nb_1,)) # np.random.randint(0, h)
-        # imin = i - w
-        # imax = i + w + 1
-        # imin[imin<0] = 0
-        # imax[imax > h] = h
-
-
-        # x[p2, imin] = 1.0
-        # x[p2, i] = 2.0
-        # x[p2, imax] = 1.0
-        
-        # same shape, but shifted
-        i = np.random.randint(imin0 + 2, imax0 + 2, (nb_1,)) # np.random.randint(0, h)
-        imin = i - w
-        imax = i + w
-        imin[imin<0] = 0
-        imax[imax > h] = h
-
-
-        x[p2, imin] = 1.0
-        x[p2, i] = 1.0
-        x[p2, imax] = 1.0
-
-        x /= x.sum(axis=1, keepdims=True)
-
-        x = torch.tensor(x, dtype=torch.float)
-        y = torch.tensor(y, dtype=torch.long)
-        yield x, y
-
-
-    
 def get_batch():
     h = 16 # history length
     b = BATCH_SIZE
     w = 1 # +- w around the center index
     
     imin0 = 1
-    imax0 = 2
+    imax0 = 15
 
-    imin1 = 14
+    imin1 = 1
     imax1 = 15
 
     while True:
@@ -141,7 +73,7 @@ def get_batch():
         imax[imax > h] = h
 
         x[p1, imin] = 1.0
-        x[p1, i] = 1.0
+        x[p1, i] = 1.1
         x[p1, imax] = 1.0
 
 
@@ -154,7 +86,7 @@ def get_batch():
 
 
         x[p2, imin] = 1.0
-        x[p2, i] = 1.0
+        x[p2, i] = 2.0
         x[p2, imax] = 1.0
         
         # x /= x.sum(axis=1, keepdims=True)
@@ -163,9 +95,11 @@ def get_batch():
         y = torch.tensor(y, dtype=torch.long)
         yield x, y
 
-class NNWindow(nn.Module):
+class SoftSlice1D(nn.Module):
     """
     set window size. NN to output window center
+
+    basically a soft-array slice, similar to how attention is like a soft-dictionary lookup
     """
     def __init__(self, 
                  in_w,
@@ -180,10 +114,10 @@ class NNWindow(nn.Module):
         
         n1 = 128
         self.window_nn = nn.Sequential(
-            # nn.Linear(in_w, n1),
-            # nn.LeakyReLU(),
-            # nn.Linear(n1, n1),
-            # nn.LeakyReLU(),
+            nn.Linear(in_w, n1),
+            nn.LeakyReLU(),
+            nn.Linear(n1, n1),
+            nn.LeakyReLU(),
             nn.Linear(n1, 1),
             nn.Tanh(),
             # spatialsoftargmax()
@@ -202,7 +136,7 @@ class NNWindow(nn.Module):
         b = inputs.shape[0]
 
         # cat the inputs and the xpos's
-        x = torch.cat((inputs, self.xpos), dim=-1)
+        # x = torch.cat((inputs, self.xpos), dim=-1)
         
         # range [-1, 1]
         window_center = self.window_nn(inputs)
@@ -213,16 +147,31 @@ class NNWindow(nn.Module):
 
         # differentiable
         softidx = window_center * self.in_w / 2.0 + self.in_w / 2.0
-        
-        # normalize so that the val doesn't effect the output
-        weights = window_center / window_center.detach().mean(dim=1, keepdims=True)
-        weights.retain_grad()
-        self.weights = weights
-        
+
+        # distance function - abs
+        d = lambda x, y: torch.abs(x - y)
+
+        floors = torch.floor(softidx).to(torch.int)
+        ceils = torch.ceil(softidx).to(torch.int)
+
+        idxs0 = torch.range(-self.kernel_size, self.kernel_size).to(torch.int)
+
+        idxs1 = idxs0 + floors
+        idxs2 = idxs0 + ceils
+
+        w1s = 1.0 - d(softidx, floors)
+        w2s = 1.0 - d(softidx, ceils)
+
+        # construct the A matrix, shape [b, out_w, in_w]
+        A = torch.zeros((b, self.out_w, self.in_w))
+        B = torch.zeros((b, self.out_w, self.in_w))
+
         y = torch.empty((b, self.out_w))
+
         for i in range(b):
-            y[i] = inputs[i, idx[i] - self.kernel_size:idx[i] + self.kernel_size + 1] * weights[i]
-            
+            y[i] = inputs[i][idxs1[i]] * w1s[i] + inputs[i][idxs2[i]] * w2s[i]
+
+        # y = A @ inputs
         y.retain_grad()
         self.y = y
                 
@@ -235,6 +184,88 @@ class NNWindow(nn.Module):
         pass
 
     # return grad_input, grad_output
+
+class SoftSlice2D(nn.Module):
+    """
+    set window size. NN to output window center
+
+    basically a soft-array slice, similar to how attention is like a soft-dictionary lookup
+    """
+    def __init__(self, 
+                 in_w,
+                 kernel_size,
+                 *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.in_w = in_w
+        self.kernel_size = kernel_size
+
+        self.out_w = 1 + 2 * self.kernel_size
+        
+        n1 = 128
+        self.window_nn = nn.Sequential(
+            nn.Linear(in_w, n1),
+            nn.LeakyReLU(),
+            nn.Linear(n1, n1),
+            nn.LeakyReLU(),
+            nn.Linear(n1, 1),
+            nn.Tanh(),
+            # spatialsoftargmax()
+        )
+        
+        
+        xpos = np.linspace(-1., 1., self.in_w)
+        xpos2 = torch.from_numpy(xpos).float().to(DEVICE)
+
+        self.xpos = torch.unsqueeze(xpos2, dim=0)
+        
+
+        self.register_full_backward_hook(self.module_backward_hook)
+        
+    def forward(self, inputs):
+        b = inputs.shape[0]
+
+        # cat the inputs and the xpos's
+        # x = torch.cat((inputs, self.xpos), dim=-1)
+        
+        # range [-1, 1]
+        window_center = self.window_nn(inputs)
+        window_center.retain_grad()
+        self.window_center = window_center
+        
+        # idx = (window_center.detach() + self.in_w / 2.0).to(torch.int).squeeze()
+
+        # differentiable
+        softidx = window_center * self.in_w / 2.0 + self.in_w / 2.0
+
+        # distance function - abs
+        d = lambda x, y: torch.abs(x - y)
+
+        floors = torch.floor(softidx).to(torch.int)
+        ceils = torch.ceil(softidx).to(torch.int)
+
+        idxs0 = torch.range(-self.kernel_size, self.kernel_size).to(torch.int)
+
+        idxs1 = idxs0 + floors
+        idxs2 = idxs0 + ceils
+
+        w1s = 1.0 - d(softidx, floors)
+        w2s = 1.0 - d(softidx, ceils)
+
+        # construct the A matrix, shape [b, out_w, in_w]
+        A = torch.zeros((b, self.out_w, self.in_w))
+        B = torch.zeros((b, self.out_w, self.in_w))
+
+        y = torch.empty((b, self.out_w))
+
+        for i in range(b):
+            y[i] = inputs[i][idxs1[i]] * w1s[i] + inputs[i][idxs2[i]] * w2s[i]
+
+        # y = A @ inputs
+        y.retain_grad()
+        self.y = y
+                
+        return y
 
 def get_num_correct(preds, labels):
     # preds.argmax(dim=1) gets the index of the max log-probability/logit (the predicted class)
@@ -249,7 +280,7 @@ def main():
     kernel_size = 2
     
 
-    nnwindow_output = 1 + 2 * kernel_size
+    SoftSlice1D_output = 1 + 2 * kernel_size
     
     nb_hidden = 64
 
@@ -258,16 +289,13 @@ def main():
     # make a simple NN
     model = nn.Sequential(
         # 1. baseline
-        # nn.Linear(nb_inputs, nnwindow_output),
+        # nn.Linear(nb_inputs, SoftSlice1D_output),
         # nn.LeakyReLU(),
 
-        # 2. 
-        # RoamingGaussianDownsample1DLearnableStats(nb_inputs, nb_gaussians),
-
         # 3. 
-        NNWindow(in_w=nb_inputs, kernel_size=2),
+        SoftSlice1D(in_w=nb_inputs, kernel_size=kernel_size),
 
-        nn.Linear(nnwindow_output, nb_hidden),
+        nn.Linear(SoftSlice1D_output, nb_hidden),
         nn.LeakyReLU(),
 
         # final layer to get outputs
