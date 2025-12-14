@@ -20,91 +20,16 @@ BATCH_SIZE = 64
 DEVICE = 'cpu' # must be cpu for backward hook to work
 
 """
-1d temporal data. IRL we'd expect to save xt-1 = xt with each new observation. So adjacent elements are correlated.
-Previously you'd create a Unet (or more recently a transformer), and just feed everything into it.
+Sandcastle 5 - inspiration: ffmpeg will have key-frames periodically which take much longer to compress, and then inbetween those key-frames they'll have delta-frames so they only have to process a small amount of data, resulting in much quicker compression of non key-frame frames.
 
-Hypothesis:
-    learn to fit "attention" gaussians to the sequence, each gaussian outputs 
-        learnable params: 1. [pos-mean, pos-std] --> this should fail with this dataset because the interesting subset of histories is always moving backwards
-                            2. NN which outputs [pos-mean, pos-std] --> this should succeed with this dataset because then it can "track" the interesting neurons as data moves through the history
-        outputs: [val-weighted-mean, val-weighted-std, pos-mean, pos-std]
+Design a neural net that exploits temporal relationship of inputs
+key-frame ~~ absolute obs and state inputs
+delta-frames ~~ key-frame - current-frame
 
-    counter:
-        attention does something similar, because it uses the same weights for each entry in a sequence IIRC
-
-inputs:
-    sequence of vals denoting a shape
-outputs:
-    1-hot shape classification
-
+flavors:
+RNN
+ffmpeg
 """
-    
-def get_batc_2():
-    h = 16 # history length
-    b = BATCH_SIZE
-    w = 1 # +- w around the center index
-    
-    imin0 = 9
-    imax0 = 10
-    
-
-    while True:
-        x = np.zeros((b, h))
-        y = np.zeros((b,))
-        
-        p = np.random.random((b,))
-        
-        p1 = p > 0.5
-        p2 = ~p1
-
-        nb_0 = p1.sum()
-        nb_1 = p2.sum()
-        
-        y[p1] = 0.0
-        y[p2] = 1.0
-        
-        # rectangle: ____----_____
-        i = np.random.randint(imin0, imax0, size = (nb_0,)) #  np.random.randint(0, h)
-        imin = i - w
-        imax = i + w
-        imin[imin<0] = 0
-        imax[imax > h] = h
-
-        x[p1, imin] = 1.0
-        x[p1, i] = 1.0
-        x[p1, imax] = 1.0
-
-
-        # triangle: ____/^\_____
-        # i = np.random.randint(imin0, imax0, (nb_1,)) # np.random.randint(0, h)
-        # imin = i - w
-        # imax = i + w + 1
-        # imin[imin<0] = 0
-        # imax[imax > h] = h
-
-
-        # x[p2, imin] = 1.0
-        # x[p2, i] = 2.0
-        # x[p2, imax] = 1.0
-        
-        # same shape, but shifted
-        i = np.random.randint(imin0 + 2, imax0 + 2, (nb_1,)) # np.random.randint(0, h)
-        imin = i - w
-        imax = i + w
-        imin[imin<0] = 0
-        imax[imax > h] = h
-
-
-        x[p2, imin] = 1.0
-        x[p2, i] = 1.0
-        x[p2, imax] = 1.0
-
-        x /= x.sum(axis=1, keepdims=True)
-
-        x = torch.tensor(x, dtype=torch.float)
-        y = torch.tensor(y, dtype=torch.long)
-        yield x, y
-
 
     
 def get_batch():
@@ -180,10 +105,10 @@ class NNWindow(nn.Module):
         
         n1 = 128
         self.window_nn = nn.Sequential(
-            # nn.Linear(in_w, n1),
-            # nn.LeakyReLU(),
-            # nn.Linear(n1, n1),
-            # nn.LeakyReLU(),
+            nn.Linear(in_w, n1),
+            nn.LeakyReLU(),
+            nn.Linear(n1, n1),
+            nn.LeakyReLU(),
             nn.Linear(n1, 1),
             nn.Tanh(),
             # spatialsoftargmax()
@@ -200,19 +125,12 @@ class NNWindow(nn.Module):
         
     def forward(self, inputs):
         b = inputs.shape[0]
-
-        # cat the inputs and the xpos's
-        x = torch.cat((inputs, self.xpos), dim=-1)
         
-        # range [-1, 1]
         window_center = self.window_nn(inputs)
         window_center.retain_grad()
         self.window_center = window_center
         
-        # idx = (window_center.detach() + self.in_w / 2.0).to(torch.int).squeeze()
-
-        # differentiable
-        softidx = window_center * self.in_w / 2.0 + self.in_w / 2.0
+        idx = (window_center.detach() + self.in_w / 2.0).to(torch.int).squeeze()
         
         # normalize so that the val doesn't effect the output
         weights = window_center / window_center.detach().mean(dim=1, keepdims=True)
@@ -265,7 +183,7 @@ def main():
         # RoamingGaussianDownsample1DLearnableStats(nb_inputs, nb_gaussians),
 
         # 3. 
-        NNWindow(in_w=nb_inputs, kernel_size=2),
+        NNWindow(nb_inputs, kernel_size=2),
 
         nn.Linear(nnwindow_output, nb_hidden),
         nn.LeakyReLU(),
