@@ -29,6 +29,8 @@ delta-frames ~~ key-frame - current-frame
 flavors:
 RNN
 ffmpeg
+
+this is pretty similar to an RNN, and LSTM's
 """
 
     
@@ -88,79 +90,54 @@ def get_batch():
         y = torch.tensor(y, dtype=torch.long)
         yield x, y
 
-class NNWindow(nn.Module):
+class KeyFrameNN(nn.Module):
     """
-    set window size. NN to output window center
+    just a normal NN
     """
     def __init__(self, 
-                 in_w,
-                 kernel_size,
+                 nb_inputs,
+                 nb_hidden,
+                 nb_outputs,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self.in_w = in_w
-        self.kernel_size = kernel_size
-
-        self.out_w = 1 + 2 * self.kernel_size
-        
-        n1 = 128
-        self.window_nn = nn.Sequential(
-            nn.Linear(in_w, n1),
+        self.model = nn.Sequential(
+            nn.Linear(nb_inputs, nb_hidden),
             nn.LeakyReLU(),
-            nn.Linear(n1, n1),
+            nn.Linear(nb_hidden, nb_hidden),
             nn.LeakyReLU(),
-            nn.Linear(n1, 1),
-            nn.Tanh(),
-            # spatialsoftargmax()
+            nn.Linear(nb_hidden, nb_outputs),
         )
-        
-        
-        xpos = np.linspace(-1., 1., self.in_w)
-        xpos2 = torch.from_numpy(xpos).float().to(DEVICE)
 
-        self.xpos = torch.unsqueeze(xpos2, dim=0)
-        
+        def get_nb_parameterized_layers(self):
+            """
+            nb parameterized layers 
+            """
+            return 2
 
-        self.register_full_backward_hook(self.module_backward_hook)
+        def forward(self, inputs):
+            return self.model(inputs)
         
-    def forward(self, inputs):
-        b = inputs.shape[0]
-        
-        window_center = self.window_nn(inputs)
-        window_center.retain_grad()
-        self.window_center = window_center
-        
-        idx = (window_center.detach() + self.in_w / 2.0).to(torch.int).squeeze()
-        
-        # normalize so that the val doesn't effect the output
-        weights = window_center / window_center.detach().mean(dim=1, keepdims=True)
-        weights.retain_grad()
-        self.weights = weights
-        
-        y = torch.empty((b, self.out_w))
-        for i in range(b):
-            y[i] = inputs[i, idx[i] - self.kernel_size:idx[i] + self.kernel_size + 1] * weights[i]
-            
-        y.retain_grad()
-        self.y = y
-                
-        return y
-        
+class DeltaNN(nn.Module):
+    """
+    given inputs xk and delta-xi, predict yi
+    """
+    def __init__(self, 
+                 nb_keyframe_inputs,
+                 nb_hidden,
+                 nb_outputs,
+                 *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
+        self.model = nn.Sequential(
+            nn.Linear(nb_keyframe_inputs + nb_outputs, nb_hidden),
+            nn.LeakyReLU(),
+            nn.Linear(nb_hidden, nb_outputs),
+        )
 
-    def module_backward_hook(self, module, grad_input, grad_output):
-        # print("test")
-        pass
-
-    # return grad_input, grad_output
-
-def get_num_correct(preds, labels):
-    # preds.argmax(dim=1) gets the index of the max log-probability/logit (the predicted class)
-    # .eq(labels) checks where the predictions equal the actual labels, returning a boolean tensor
-    # .sum() calculates the total number of correct predictions in the batch
-    nb = preds.argmax(dim=1).eq(labels).sum().item()
-    sr = nb / len(labels)
-    return sr
+        def forward(self, keyframe_inputs, delta_inputs):
+            x = torch.cat([keyframe_inputs, delta_inputs])
+            return self.model(x)
 
 def main():
     nb_inputs = 16
@@ -174,34 +151,18 @@ def main():
     nb_outputs = 2
     
     # make a simple NN
-    model = nn.Sequential(
-        # 1. baseline
-        # nn.Linear(nb_inputs, nnwindow_output),
-        # nn.LeakyReLU(),
+    keyframe_model = KeyFrameNN(nb_inputs, nb_hidden, nb_outputs)
 
-        # 2. 
-        # RoamingGaussianDownsample1DLearnableStats(nb_inputs, nb_gaussians),
-
-        # 3. 
-        NNWindow(nb_inputs, kernel_size=2),
-
-        nn.Linear(nnwindow_output, nb_hidden),
-        nn.LeakyReLU(),
-
-        # final layer to get outputs
-        nn.Linear(nb_hidden, nb_outputs),
-    )
-    model = model.to(DEVICE)
+    #
+    delta_model = DeltaNN(nb_inputs, nb_hidden, nb_outputs)
 
     # optimizer - weight_decay should be small ~1e-3
-    opt = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-9)
-
-    # classification loss
-    loss_fn = torch.nn.CrossEntropyLoss() # applies softmax to its input
+    keyframe_opt = torch.optim.SGD(keyframe_model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-9)
+    delta_opt = torch.optim.SGD(keyframe_model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-9)
 
 
-    total_params = sum(p.numel() for p in model.parameters())
-    print(f"Total number of parameters: {total_params}")
+    # total_params = sum(p.numel() for p in model.parameters())
+    # print(f"Total number of parameters: {total_params}")
 
     metrics = {"avg_l": 0.0, "avg_sr": 0.0}
 
@@ -221,19 +182,35 @@ def main():
                 if idx > nb_batches:
                     break
 
-                opt.zero_grad()
+                # train keyframe model
+                if True:
+                    keyframe_opt.zero_grad()
 
 
-                outputs = model(inputs)
+                    outputs = keyframe_model(inputs)
 
-                l = loss_fn(outputs, labels)
-                l.retain_grad()
-                l.backward(retain_graph=True)
+                    l = loss_fn(outputs, labels)
+                    l.backward(retain_graph=True)
 
-                opt.step()
+                    keyframe_opt.step()
 
-                # SR
-                sr = get_num_correct(outputs, labels)
+                # train delta model
+                if True:
+                    outputsk = outputs.clone().detach()
+
+                    delta_outputsi = delta_model(inputsk, delta_inputs, outputsk)
+
+                    outputsi = delta_outputsi + outputsk
+
+                    # g.t. outputsi from the keyframe_model
+                    with torch.no_grad():
+                        outputsi_gt = keyframe_model(inputsi)
+
+                    l = loss_fn(outputsi, outputsi_gt)
+                    l.backward()
+
+                    delta_opt.step()
+
 
                 # avg metrics
                 metrics['avg_l'] = 0.99 * metrics['avg_l'] + 0.01 * float(l.detach())
@@ -244,45 +221,10 @@ def main():
                 t.update()
 
         # end of epoch
-        # print(pp.probabilities)
-
-        model.eval()
-
-        # validation
-
-        # reset to training mode
-        model.train()
-
-        if False:
-            # p = pds.productivity.clone().detach()
-            # p = pds.get_productive_inputs()
-            inds = roaming_gaus.gaus
-
-            p = torch.zeros(28*28)
-            p[inds] = 1.0
-
-            p2 = torch.unflatten(p, 0, (28, 28))
-
-            p2 = p.reshape([28, 28])
-
-            # [0, 1]
-            p2 /= p2.max()
-
-            if PLOT:
-                p3 = p2.cpu()
-                plt.clf()
-                plt.imshow(p3, vmin=0, vmax=1)
-                plt.show()
-                plt.colorbar()
-                fig.canvas.draw()
-                fig.canvas.flush_events()
-
 
         
 
 
     pass
-    total_params = sum(p.numel() for p in model.parameters())
-    print(f"Total number of parameters: {total_params}")
 
 main()
