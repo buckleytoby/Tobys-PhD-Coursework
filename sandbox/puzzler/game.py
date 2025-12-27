@@ -4,7 +4,9 @@ from iomixins import IOMixin
 
 import pygame
 
-from levels import Level
+from levels.levels import *
+
+import sys
 
 ## parent classes
 class Base:
@@ -32,6 +34,7 @@ class Game(Base, IOMixin, ScreenMixin):
         # my <=7 members
         self.clock = pygame.time.Clock()
         self.active_level = None
+        self.level_yielder = self.get_next_level()
 
         # node refs
 
@@ -59,6 +62,33 @@ class Game(Base, IOMixin, ScreenMixin):
         for event in pygame.event.get():
             self.handle_event(event)
 
+    def end_game(self):
+        print("No more levels.")
+        print("You win!")
+
+        pygame.quit()
+        sys.exit()
+
+    def get_next_level(self):
+        levels = [
+            TestLevel1,
+            Level1,
+            Level2,
+            Level3,
+        ]
+
+        for level in levels:
+            yield level
+
+        self.end_game()
+
+    def progress(self):
+        assert(self.active_level is not None)
+
+        if self.active_level.is_completed:
+            print("level complete")
+            self.load_level()
+
     def step(self):
         # process some events
         self.process_some_events()
@@ -71,6 +101,9 @@ class Game(Base, IOMixin, ScreenMixin):
 
         # render
         self.screen_node.display()
+
+        # check progress
+        self.progress()
 
         # tick
         self.clock.tick(self.fps)
@@ -86,9 +119,12 @@ class Game(Base, IOMixin, ScreenMixin):
 
             pass
 
-    def load_level(self, level_class):
+    def load_level(self, level_class = None):
+        if level_class is None:
+            level_class = next(self.level_yielder)
+            
         # make an instance
-        lvl = level_class()
+        lvl: Level = level_class()
 
         # save it
         self.active_level = lvl

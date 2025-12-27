@@ -31,6 +31,11 @@ class FrameMixin:
         
         return parentxy
     
+    def parentscale_to_scale(self, parentxy: Vector2):
+        xy = parentxy.elementwise() / (self.wh.elementwise())
+        
+        return xy
+    
     def xy_to_parentxy(self, xy: Vector2):
         """
         transform (scale and offset) xy in this frame to xy w.r.t. my parent
@@ -39,6 +44,11 @@ class FrameMixin:
         parentxy = self.scale_to_parentscale(xy) + self.xy
 
         return parentxy
+    
+    def parentxy_to_xy(self, parentxy: Vector2):
+        xy = self.parentscale_to_scale(parentxy - self.xy)
+
+        return xy
     
 class ScreenMixin:
     def __init__(self) -> None:

@@ -30,18 +30,15 @@ class PlayerInputs:
     def get_pygame_key(self, map_key):
         return self.mapping[map_key]
 
-    def is_pressed(self, map_key):
-        pygame_key = self.get_pygame_key(map_key)
-
     def is_pygame_pressed(self, pygame_key):
         keys = pygame.key.get_pressed()
 
-        if pygame_key in keys:
-            return True
-        else:
-            return False
+        return keys[pygame_key]
 
     def get_mouse_pos(self):
+        """
+        this is global
+        """
         pygame_xy = Vector2(pygame.mouse.get_pos())
 
         xy = self.screen_node.pygamexy_to_xy(pygame_xy, 0)

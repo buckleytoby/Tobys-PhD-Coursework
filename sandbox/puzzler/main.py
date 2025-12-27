@@ -19,7 +19,7 @@ from screen import Screen
 
 from components import Slider, Chart
 
-from levels import Level, Level1
+from levels.levels import *
 
 import nodes
 
@@ -41,8 +41,8 @@ def main():
     # instantiate the game
     nodes.GAME_NODE = Game()
 
-    # load a level
-    nodes.GAME_NODE.load_level(Level1)
+    # load the default level
+    nodes.GAME_NODE.load_level()
 
     # run the game loop
     nodes.GAME_NODE.run()

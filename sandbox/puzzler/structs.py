@@ -1,5 +1,5 @@
 from pygame.math import Vector2
-
+import pygame
 
 ## structs
 class Shape:
@@ -32,6 +32,14 @@ class Rect(Shape):
         )
 
         return other
+    
+    def get_pygame_rect(self):
+        pygame_rect = pygame.Rect(
+            self.xy,
+            self.wh
+        )
+
+        return pygame_rect
 
 
 class Line(Shape):
@@ -39,7 +47,7 @@ class Line(Shape):
                   color: tuple,
                   xy1: Vector2,
                   xy2: Vector2,
-                  width: float = 1,
+                  width: float = 0.1,
                  ) -> None:
         super().__init__()
 
@@ -75,4 +83,32 @@ class Point(Circle):
     def __init__(self, color: tuple, xy: Vector2, radius: float) -> None:
         super().__init__(color, xy, radius)
     
-## end structs
+
+class ClassificationData:
+    def __init__(self,
+                 xys,
+                 label,
+                 ) -> None:
+        self.xys = xys
+        self.label = label
+
+class State:
+    """
+    generic state struct
+    """
+
+
+    
+def UnitRect(color):
+    return Rect(
+        color,
+        xy = Vector2(0, 0),
+        wh = Vector2(1.0, 1.0),
+    )
+
+def UnitXLine(color):
+    return Line(
+        color,
+        Vector2(0, 0.5),
+        Vector2(1.0, 0.5),
+    )

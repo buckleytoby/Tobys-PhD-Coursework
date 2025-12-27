@@ -11,7 +11,7 @@ def rect_in_parent_frame(rect: Rect, frame: FrameMixin):
     copy.xy = frame.xy_to_parentxy(rect.xy)
 
     # TODO: scale wh
-    # copy.wh = frame.wh_to
+    copy.wh = frame.scale_to_parentscale(rect.wh)
 
     return copy
     

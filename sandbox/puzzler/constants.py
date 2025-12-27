@@ -1,3 +1,5 @@
+DEBUG_MODE = True
+
 
 # some constants
 BLUE = (0, 0, 255)

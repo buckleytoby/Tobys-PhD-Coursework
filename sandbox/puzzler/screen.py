@@ -8,7 +8,7 @@ class Screen:
         
         # my members
         self.pygame_screen = None
-        self.screen_wh = Vector2(640, 480) # pixels
+        self.screen_pixel_wh = Vector2(960, 720) # pixels
 
         # self.scale = Vector2(640.0, 480.0) # TODO: switch to scale
         self.zoom_level = Vector2(320.0, 240.0)  # screen viewport's zoom level
@@ -17,6 +17,11 @@ class Screen:
 
         # init myself
         self.init()
+
+    def get_screen_wh(self):
+        wh = self.pygamewh_to_wh(self.screen_pixel_wh)
+
+        return wh
 
     def wh_to_pygamewh(self, wh: Vector2):
         # straight multiplication
@@ -31,7 +36,7 @@ class Screen:
         # TODO: add the offset
 
         # y val must be flipped, and must subtract off height
-        pygamexy.y = self.screen_wh.y - pygamexy.y - pygameh
+        pygamexy.y = self.screen_pixel_wh.y - pygamexy.y - pygameh
 
         return pygamexy
     
@@ -62,7 +67,7 @@ class Screen:
         pygamexy = pygamexy.copy()
 
         # y val must be flipped, and must subtract off height
-        pygamexy.y = self.screen_wh.y - pygamexy.y - pygameh
+        pygamexy.y = self.screen_pixel_wh.y - pygamexy.y - pygameh
 
         # scale the xy
         xy = self.pygamewh_to_wh(pygamexy)
@@ -71,7 +76,7 @@ class Screen:
         
 
     def init(self):
-        self.pygame_screen = pygame.display.set_mode(vector2_to_inttuple(self.screen_wh))
+        self.pygame_screen = pygame.display.set_mode(vector2_to_inttuple(self.screen_pixel_wh))
 
         pygame.display.set_caption("Toby's Puzzling Puzzler")
 
@@ -131,6 +136,9 @@ class Screen:
     def draw(self):
         self.reset()
 
-    def draw_text(self, text_surface):
+    def draw_text(self, text_surface, xy: Vector2):
         assert(self.pygame_screen is not None)
-        self.pygame_screen.blit(text_surface, (50, 50))
+
+        xy2 = self.xy_to_pygamexy(xy, 0)
+
+        self.pygame_screen.blit(text_surface, xy2)
