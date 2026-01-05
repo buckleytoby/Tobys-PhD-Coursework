@@ -1,7 +1,12 @@
 import pygame
 from pygame.math import Vector2
+
 from structs import Rect, Line, Circle, Point
 from utils import vector2_to_inttuple
+
+from sprites import Sprite
+
+import nodes
 
 class Screen:
     def __init__(self) -> None:
@@ -9,6 +14,7 @@ class Screen:
         # my members
         self.pygame_screen = None
         self.screen_pixel_wh = Vector2(960, 720) # pixels
+        self.sprites = pygame.sprite.Group()
 
         # self.scale = Vector2(640.0, 480.0) # TODO: switch to scale
         self.zoom_level = Vector2(320.0, 240.0)  # screen viewport's zoom level
@@ -142,3 +148,44 @@ class Screen:
         xy2 = self.xy_to_pygamexy(xy, 0)
 
         self.pygame_screen.blit(text_surface, xy2)
+
+    def add_sprite(self, sprite):
+        self.sprites.add(sprite)
+
+    def draw_sprite(self, sprite: Sprite):
+        assert(self.pygame_screen is not None)
+
+        pixel_wh = self.wh_to_pygamewh(sprite.wh)
+
+        xy2 = self.xy_to_pygamexy(sprite.xy, pixel_wh[1])
+
+        # mutable copy
+        surf = sprite.image.copy()
+
+        # scale
+        surf = pygame.transform.scale(surf, pixel_wh)
+
+
+        self.pygame_screen.blit(surf, xy2)
+
+    # def update_sprites(self):
+    #     for sprite in self.sprites:
+    #         sprite.get_pygame_rect().xy = 
+
+    # def draw_sprites(self):
+    #     assert(self.pygame_screen is not None)
+
+    #     # must update internal pygame rect
+    #     self.update_sprites()
+
+    #     # convenience draw function
+    #     self.sprites.draw(self.pygame_screen)
+
+
+    
+class ScreenMixin:
+    def __init__(self) -> None:
+        
+        # node refs
+        assert(isinstance(nodes.SCREEN_NODE, Screen))
+        self.screen_node: Screen = nodes.SCREEN_NODE

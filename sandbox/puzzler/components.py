@@ -2,17 +2,17 @@ import numpy as np
 
 from pygame.math import Vector2
 
-from mixins import FrameMixin, IDMixin, ScreenMixin
+from mixins import FrameMixin, IDMixin
 
 from iomixins import IOMixin
 
-from structs import Rect, Circle, Line, Point, UnitRect, UnitXLine
+from structs import Rect, Circle, Line, Point, UnitRect, UnitXLine, DataPoint
 
 import pygame
 
 from constants import *
 
-from screen import Screen
+from screen import Screen, ScreenMixin
 
 from io_ import PlayerInputs
 
@@ -23,6 +23,8 @@ import nodes
 from transformations import rect_in_parent_frame, circle_in_parent_frame
 
 from utils import get_random_rgb
+
+from sprites import Sprite
 
 # alias
 class Component(IOMixin, FrameMixin, IDMixin, ScreenMixin):
@@ -67,6 +69,30 @@ class LineComponent(Component):
 
     def draw(self):
         self.screen_node.draw_line(self.line)
+
+class SpriteComponent(Component):
+    def __init__(self, xy=Vector2(0, 0), wh=Vector2(1, 1), use_background=False,
+                 asset_key = None,
+                 ) -> None:
+        super().__init__(xy, wh, use_background)
+
+        self.sprite = Sprite(
+            asset_key,
+            xy,
+            wh,
+        )
+
+        # self.register()
+
+    def register(self):
+        # register myself with the screen
+        self.screen_node.add_sprite(self)
+
+    def draw(self):
+        self.screen_node.draw_sprite(self.sprite)
+
+    def update(self):
+        self.sprite.update()
 
 class LineComponentPassIn(Component):
     def __init__(self, xy=Vector2(0, 0), wh=Vector2(1, 1), use_background=False,
@@ -183,26 +209,31 @@ class Axis(Component):
 
         w, h = self.screen_node.get_screen_wh()
 
-        # axis
-        line = Line(
-            GREEN,
-            xy1 = Vector2(0, 0.05),
-            xy2 = Vector2(w, 0.05),
-            width = 0.05,
+        # # axis
+        # line = Line(
+        #     GREEN,
+        #     xy1 = Vector2(0, 0.05),
+        #     xy2 = Vector2(w, 0.05),
+        #     width = 0.05,
+        # )
+        # self.add_drawable(LineComponentPassIn(line = line))
+        line = SpriteComponent(
+            xy = Vector2(0, 0.05),
+            wh = Vector2(w, 0.2),
+            asset_key = "xaxis",
         )
-        self.add_drawable(LineComponentPassIn(line = line))
+        self.add_drawable(line)
 
         # ticks
         tickxs = np.linspace(0, w, nb_ticks)
 
         for tickx in tickxs:
-            line = Line(
-                GREEN,
-                Vector2(tickx, 0.0),
-                Vector2(tickx, 0.2),
-                width = 0.025
+            line = SpriteComponent(
+                xy = Vector2(tickx, 0.05),
+                wh = Vector2(0.1, 0.2),
+                asset_key = "ytick",
             )
-            self.add_drawable(LineComponentPassIn(line = line))
+            self.add_drawable(line)
 
 class Grid(Axis):
     def __init__(self, nb_ticks=1) -> None:
@@ -269,12 +300,40 @@ class Clicker(Component):
     def get_value(self):
         return self.clicked
     
-class Chart(FrameMixin):
+class Data(Component):
+    def __init__(self, xy: Vector2, wh: Vector2, use_background=False,
+                 data_class1 = None,
+                 data_class2 = None,
+                 ) -> None:
+        super().__init__(xy, wh, use_background)
+
+        self.data_class1 = data_class1
+        self.data_class2 = data_class2
+
+        w, h = self.screen_node.get_screen_wh()
+
+        for datapt in self.data_class1:
+            self.add_datapoint(datapt)
+
+        for datapt in self.data_class2:
+            self.add_datapoint(datapt)
+
+    def add_datapoint(self, datapoint: DataPoint, ):
+        # make sprite
+        s = SpriteComponent(datapoint.xy, wh = Vector2(0.1, 0.1), asset_key = )
+
+        # add drawable
+
+
+        
+    
+class Chart(Component):
     def __init__(self,
                  xy: Vector2,
-                 wh: Vector2
+                 wh: Vector2,
+                 use_background = False,
                  ) -> None:
-        FrameMixin.__init__(self, xy, wh)
+        super().__init__(xy, wh, use_background)
 
         # my members
         self.points: list[Point] = list()
@@ -347,5 +406,3 @@ class Chart(FrameMixin):
             ppts.append(ppt)
 
         return ppts
-## end components
-        

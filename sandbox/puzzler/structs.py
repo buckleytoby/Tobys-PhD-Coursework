@@ -83,6 +83,11 @@ class Point(Circle):
     def __init__(self, color: tuple, xy: Vector2, radius: float) -> None:
         super().__init__(color, xy, radius)
     
+class DataPoint:
+    def __init__(self,
+                 xy: Vector2,
+                 ) -> None:
+        self.xy = xy
 
 class ClassificationData:
     def __init__(self,

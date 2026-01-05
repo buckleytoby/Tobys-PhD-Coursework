@@ -1,6 +1,6 @@
 import numpy as np
 
-from mixins import IDMixin, ScreenMixin
+from mixins import IDMixin
 
 from iomixins import EventHandlerMixin, IOMixin
 
@@ -17,6 +17,8 @@ import pygame
 from components import Component, Slider, Chart, Clicker, Grid
 
 from utils import get_random_rgb, get_signed_distance
+
+from screen import ScreenMixin
 
      
 class LevelMap(ScreenMixin):

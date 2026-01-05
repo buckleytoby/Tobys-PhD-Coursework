@@ -1,4 +1,3 @@
-from mixins import ScreenMixin
 
 from iomixins import IOMixin
 
@@ -7,6 +6,8 @@ import pygame
 from levels.levels import *
 
 import sys
+
+from screen import ScreenMixin
 
 ## parent classes
 class Base:
@@ -116,6 +117,12 @@ class Game(Base, IOMixin, ScreenMixin):
         done = False
         while not done:
             self.step()
+
+            # update game time
+            ms_since_start = pygame.time.get_ticks()
+
+            # Convert to seconds
+            nodes.GAME_TIME = ms_since_start / 1000.0
 
             pass
 

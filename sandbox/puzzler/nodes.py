@@ -9,3 +9,9 @@ IO_NODE = None
 
 """ Screen node """
 SCREEN_NODE = None
+
+""" assets """
+ASSETS_NODE = None
+
+""" game time """
+GAME_TIME = 0.0

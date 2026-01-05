@@ -1,8 +1,6 @@
 from pygame.math import Vector2
 import nodes
 
-from screen import Screen
-
 class IDMixin:
     id = 0
     def __init__(self) -> None:
@@ -49,10 +47,3 @@ class FrameMixin:
         xy = self.parentscale_to_scale(parentxy - self.xy)
 
         return xy
-    
-class ScreenMixin:
-    def __init__(self) -> None:
-        
-        # node refs
-        assert(isinstance(nodes.SCREEN_NODE, Screen))
-        self.screen_node: Screen = nodes.SCREEN_NODE
