@@ -13,14 +13,21 @@ import torch as th
 from torch import nn
 
 # global parameters
-DT = 1e-3
+DT = 1e-1
 K = 100.0
 B = 10.0
 M = 5.0
+COUNT = 1
 
 T0 = 0.0
-TF = 10.0
+TF = 5.0
 
+def time_plot(t, z, v):
+    plt.plot(t, z)
+    plt.plot(t, v)
+
+def phase_plot(z, v):
+    plt.plot(z, v)
 
 class DampedHarmonicOscillator:
     def __init__(self, k=K, b=B, m=M):
@@ -98,14 +105,15 @@ class ForwardEuler:
             history['v'].append(x[1])
             history['t'].append(t)
 
-        return history
+        self.history = history
+        return self.history
 
-    def plot(self, history, fig: figure.Figure):
-        x = history['x']
-        t = history['t']
+    def plot(self, fig: figure.Figure = None): #type:ignore
+        z = self.history['z']
+        v = self.history['v']
+        t = self.history['t']
 
-        plt.plot(t, x)
-
+        time_plot(t, z, v)
 
 
 class RK4(ForwardEuler):
@@ -156,12 +164,14 @@ class Exercise2:
         
         self.solve()
 
+        self.plot()
+
     def solve(self):
         """
         solve RK4
         """
-        solver = RK4(self.system.compute_h_dot)
-        self.history = solver.steps(T0, TF, self.system.h0, DT)
+        self.solver = RK4(self.system.compute_h_dot)
+        self.history = self.solver.steps(T0, TF, self.system.h0, DT)
 
         # convert to numpy
         self.history = {
@@ -170,6 +180,13 @@ class Exercise2:
 
     def get_history(self):
         return self.history
+    
+    def plot(self):
+        self.solver.plot()
+
+        plt.title("Exercise 2")
+        plt.legend(["Pos", "Vel"])
+        plt.show()
         
 class Exercise3:
     """
@@ -178,18 +195,20 @@ class Exercise3:
     def __init__(self) -> None:
         system = DampedHarmonicOscillator()
 
-        exercise2 = Exercise2()
+        self.exercise2 = Exercise2()
 
-        self.clean_history = exercise2.get_history()
+        self.clean_history = self.exercise2.get_history()
 
         self.add_noise()
+
+        self.plot()
 
     def add_noise(self):
         """
         additive Gaussian noise to the trajectory you obtained. The noise should be independent and centered, with a chosen standard deviation
         """
         # std dev for z, v
-        std_dev = np.array([0.5, 0.1])
+        std_dev = [0.05, 0.05]
 
         # make the gaussian noise generator
         def gaus(n, std_dev):
@@ -198,8 +217,8 @@ class Exercise3:
 
         N = len(self.clean_history['t'])
 
-        z = self.clean_history['z']
-        v = self.clean_history['v']
+        z = deepcopy(self.clean_history['z'])
+        v = deepcopy(self.clean_history['v'])
 
         # generate noise
         noise1 = gaus(N, std_dev[0])
@@ -224,6 +243,31 @@ class Exercise3:
         """
         Produce again two subplots: 1) show the clean solution z(t) as a line together with the noisy sampled points $(t_i, z_i)$, and 2) show the smooth trajectory in the two-dimensional phase space (z(t), v(t)) and superimpose the noisy points $(z_i, v_i)$.
         """
+        ## 1)
+        # clean trajectory
+        # self.exercise2.plot()
+
+        # dirty trajectory
+        t = self.history['t']
+        dirty_z = self.history['z']
+        dirty_v = self.history['v']
+
+        time_plot(t, self.clean_history['z'], self.clean_history['v'])
+        time_plot(t, dirty_z, dirty_v)
+
+        plt.title("Exercise 3, plot 1, time plot")
+        plt.legend(["Pos", "Vel", "Noisy Pos", "Noisy Vel"])
+        plt.show()
+
+        ## 2)
+        phase_plot(self.clean_history['z'], self.clean_history['v'])
+        phase_plot(dirty_z, dirty_v)
+
+        plt.title("Exercise 3, plot 2, phase plot")
+        plt.legend(["Clean Phase", "Dirty Phase"])
+        plt.show()
+
+
 
 class Exercise4:
     """
@@ -232,15 +276,15 @@ class Exercise4:
     def __init__(self) -> None:
         # make the system
         system = DampedHarmonicOscillator()
-        exercise3 = Exercise3()
+        self.exercise3 = Exercise3()
 
-        self.history = exercise3.get_noisy_history()
+        self.history = self.exercise3.get_noisy_history()
 
         # time ti
         in_features = 1
 
         # x-value, xi = zi
-        out_features = 1
+        out_features = 2
 
         # make the model
         self.model = nn.Sequential(
@@ -253,7 +297,7 @@ class Exercise4:
 
         self.train()
 
-        self.post_process()
+        self.plot()
 
     def train(self):
         """
@@ -263,12 +307,11 @@ class Exercise4:
 
         # loop vars
         done = False
-        count = 1000
 
         # target is fixed
-        target = self.history['z']
+        target = np.hstack([self.history['z'], self.history['v']]) #type:ignore
         target = th.Tensor(target)
-        target = target.reshape((-1, 1))
+        target = target.reshape((-1, 2))
 
         # obs is fixed
         obs = self.history['t']
@@ -276,7 +319,7 @@ class Exercise4:
         obs = obs.reshape((-1, 1))
 
         # while not done:
-        for _ in range(count):
+        for _ in range(COUNT):
             # reset optimizer
             opt.zero_grad()
 
@@ -292,12 +335,47 @@ class Exercise4:
             # step the optimizer
             opt.step()
 
-    def post_process(self):
-        """
-        print the final loss, get the final predictions, and plot them
-        """
-        pass
+        print("Final loss: {}".format(loss.detach().cpu().numpy())) #type:ignore
 
+    def final_prediction(self):
+        t = self.exercise3.clean_history['t']
+        t = th.Tensor(t)
+        t = t.reshape((-1, 1))
+
+        # final predictions
+        with th.no_grad():
+            xi = self.model(t)
+
+        # numpy
+        xi = xi.cpu().numpy()
+        zi = xi[:, 0]
+        vi = xi[:, 1]
+
+        return t, zi, vi
+
+    def plot(self):
+        """
+        print the get the final predictions, and plot them
+        """        
+        t, zi, vi = self.final_prediction()
+
+        # time plot vs obs
+        # time_plot(t, clean_history['z'], clean_history['v'])
+        time_plot(t, self.history['z'], self.history['v'])
+        time_plot(t, zi, vi)
+
+        plt.title("Exercise 4: time plot")
+        plt.legend(["Noisy Pos", "Noisy Vel", "NN Pos", "NN Vel"])
+
+        plt.show()
+
+        # phase plot
+        phase_plot(self.history['z'], self.history['v'])
+        phase_plot(zi, vi)
+
+        plt.title("Exercise 4: phase plot")
+        plt.legend(["Noisy Phase", "NN Phase"])
+        plt.show()
 
 
 class Exercise5:
@@ -306,6 +384,15 @@ class Exercise5:
     """
     def __init__(self) -> None:
         self.exercise4 = Exercise4()
+
+        self.plot()
+
+    def final_prediction(self):
+        # for now just call exercise4
+        return self.exercise4.final_prediction()
+
+    def plot(self):
+        pass
 
         
 class Exercise6:
@@ -318,20 +405,23 @@ class Exercise6:
         # my children
         self.system = DampedHarmonicOscillator()
 
-        exercise3 = Exercise3()
-        exercise4 = Exercise4()
+        self.exercise5 = Exercise5()
+        self.exercise4 = self.exercise5.exercise4
+        self.exercise3 = self.exercise4.exercise3
 
-        self.history = exercise3.get_noisy_history()
+        self.history = self.exercise3.get_noisy_history()
 
         # params
-        self.N = 100
+        self.N = len(self.history['t'])
         self.dt = 1e-3
 
-        # length of the observation
-        len_z = 2
+        # length of the position
+        len_z = 1
 
         # length of the velocity
-        len_v = 2
+        len_v = 1
+
+        self.batch_size = 1000 # testing
 
         in_features = len_z + len_v
 
@@ -350,6 +440,10 @@ class Exercise6:
         # alias
         self.model = self.F_theta
 
+        self.train()
+
+        self.plot()
+
     def rollout_euler(self, h):
         """
         Build the predicted trajectory by iterating the Euler/ResNet update $h_{n+1} = h_n + dt * F_{theta}(h_n)$, using the same dt as in your RK4 solver
@@ -359,16 +453,18 @@ class Exercise6:
 
         h_n = h
 
+        n = self.batch_size - 1
+
         trajectory = [h_n]
 
-        for i in range(self.N):
+        for i in range(n):
             ftheta = self.F_theta(h_n)
 
             h_n_plus_one = h_n + self.dt * ftheta
 
             h_n = h_n_plus_one
 
-            trajectory.append([h_n])
+            trajectory.append(h_n)
 
         # stack the trajectory
         trajectory = th.vstack(trajectory)
@@ -383,24 +479,29 @@ class Exercise6:
 
         # loop vars
         done = False
-        count = 1000
 
         # inital condition
         h0 = self.system.h0
+        h0 = th.Tensor(h0)
+        h0 = h0.reshape((1, 2))
+
 
         # target traj is static
-        target_traj = self.history['z']
-        target_traj = th.Tensor(target_traj)
+        target = np.hstack([self.history['z'], self.history['v']]) #type:ignore
+        target = th.Tensor(target)
+        target = target.reshape((-1, 2))
+
+        target = target[:self.batch_size, :]
 
         # while not done:
-        for _ in range(count):
+        for _ in range(COUNT):
             # reset optimizer
             opt.zero_grad()
 
             predicted_traj = self.rollout_euler(h0)
 
             # MSE loss
-            loss = nn.functional.mse_loss(predicted_traj, target_traj)
+            loss = nn.functional.mse_loss(predicted_traj, target)
 
             # back-propagate
             loss.backward()
@@ -408,15 +509,71 @@ class Exercise6:
             # step the optimizer
             opt.step()
 
-    def post_process(self):
+    def plot(self):
         """
         Plot z(t) (learned vs ground truth) and the phase-space trajectory (z,v) (learned vs ground truth, and optionally noisy points).
+
+        Finally, compare with the previous feedforward network $z_{hat}(t)
         """
-        pass
+        clean_history = self.exercise3.clean_history
+        dirty_history = self.history
+        
+        t = clean_history['t']
+        t = th.Tensor(t)
+        t = t.reshape((-1, 1))
+
+
+        h0 = self.system.h0
+        h0 = th.Tensor(h0)
+        h0 = h0.reshape((1, 2))
+
+        # final predictions
+        with th.no_grad():
+            xi = self.rollout_euler(h0)
+
+        # numpy
+        xi = xi.cpu().numpy()
+        zi = xi[:, 0]
+        vi = xi[:, 1]
+
+        # time plot vs obs
+        time_plot(t, clean_history['z'], clean_history['v'])
+        # time_plot(t, self.history['z'], self.history['v'])
+        time_plot(t, zi, vi)
+
+        plt.title("Exercise 6: time plot")
+        plt.legend(["GT Pos", "GT Vel", "RNN Pos", "RNN Vel"])
+
+        plt.show()
+
+        # phase plot
+        # phase_plot(self.history['z'], self.history['v'])
+        phase_plot(clean_history['z'], clean_history['v'])
+        phase_plot(zi, vi)
+
+        plt.title("Exercise 6: phase plot")
+        plt.legend(["GT Phase", "RNN Phase"])
+        plt.show()
+
+        #####
+        t, ff_zi, ff_vi = self.exercise5.final_prediction()
+
+        # time plot vs obs
+        time_plot(t, ff_zi, ff_vi)
+        time_plot(t, zi, vi)
+
+        plt.title("Exercise 6: time plot")
+        plt.legend(["FF Pos", "FF Vel", "RNN Pos", "RNN Vel"])
+
+        plt.show()
 
 class Exercise7:
     """
-    Plot the learned vector field in phase space by evaluating the neural network $F_{theta}$ on a grid of points and representing the corresponding vectors with arrows (quiver plot). Instead of using only one initial condition, define a two-dimensional Gaussian distribution centered at your original initial state $(z_0, v_0)$, with a standard deviations of your choice. Randomly sample three different initial conditions from this Gaussian distribution and, using your trained model in prediction mode, generate and plot the three corresponding trajectories in phase space. Comment briefly on how the learned dynamics behave for nearby initial conditions.
+    Plot the learned vector field in phase space by evaluating the neural network $F_{theta}$ on a grid of points and representing the corresponding vectors with arrows (quiver plot). 
+    
+    Instead of using only one initial condition, define a two-dimensional Gaussian distribution centered at your original initial state $(z_0, v_0)$, with a standard deviations of your choice. 
+    
+    Randomly sample three different initial conditions from this Gaussian distribution and, using your trained model in prediction mode, generate and plot the three corresponding trajectories in phase space. Comment briefly on how the learned dynamics behave for nearby initial conditions.
     """
     def __init__(self) -> None:
         self.exercise6 = Exercise6()
@@ -427,7 +584,42 @@ class Exercise7:
         """
         Plot the learned vector field in phase space by evaluating the neural network $F_{theta}$ on a grid of points and representing the corresponding vectors with arrows (quiver plot).
         """
-        pass
+        h0_0 = self.exercise6.system.h0
+
+        def gaus(std_dev):
+            return np.random.normal(0, std_dev, (2, 1))
+        
+
+        def run_and_plot(h):
+            h = th.Tensor(h)
+            h = h.reshape((1, 2))
+
+            # final predictions
+            with th.no_grad():
+                xi = self.exercise6.rollout_euler(h)
+
+            # numpy
+            xi = xi.cpu().numpy()
+            zi = xi[:, 0]
+            vi = xi[:, 1]
+
+            # phase plot
+            # phase_plot(self.history['z'], self.history['v'])
+            phase_plot(self.exercise6.exercise3.clean_history['z'], self.exercise6.exercise3.clean_history['v'])
+            phase_plot(zi, vi)
+
+            plt.title("Exercise 7: phase plot. IC: {}".format(h))
+            plt.legend(["GT Phase", "RNN Phase"])
+            plt.show()
+
+        #1
+        run_and_plot(h0_0.copy() + gaus(0.05))
+
+        #2
+        run_and_plot(h0_0.copy() + gaus(0.05))
+
+        #3
+        run_and_plot(h0_0.copy() + gaus(0.05))
 
 
 def main():
