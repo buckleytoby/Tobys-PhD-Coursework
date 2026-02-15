@@ -320,9 +320,10 @@ class Data(Component):
 
     def add_datapoint(self, datapoint: DataPoint, ):
         # make sprite
-        s = SpriteComponent(datapoint.xy, wh = Vector2(0.1, 0.1), asset_key = )
+        # s = SpriteComponent(datapoint.xy, wh = Vector2(0.1, 0.1), asset_key = )
 
         # add drawable
+        pass
 
 
         

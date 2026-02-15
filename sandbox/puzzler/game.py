@@ -72,7 +72,7 @@ class Game(Base, IOMixin, ScreenMixin):
 
     def get_next_level(self):
         levels = [
-            TestLevel1,
+            # TestLevel1,
             Level1,
             Level2,
             Level3,

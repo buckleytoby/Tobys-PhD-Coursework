@@ -22,3 +22,8 @@ sandbox/cprofile_report.txt
 me_449/asst6/buckley_toby_asst6.out
 me_449/asst6/buckley_toby_asst6.pdf
 .DS_Store
+
+*.pdf
+*.DS_Store
+*.code-workspace
+.DS_Store
