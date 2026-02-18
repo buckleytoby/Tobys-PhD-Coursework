@@ -12,15 +12,25 @@ from matplotlib import figure
 import torch as th
 from torch import nn
 
+from tqdm import tqdm
+
 # global parameters
-DT = 1e-1
+DT = 1e-2
 K = 100.0
 B = 10.0
 M = 5.0
-COUNT = 1
+COUNT = 1000
+RNN_COUNT = 2000
+LR = 1e-2
 
 T0 = 0.0
 TF = 5.0
+
+TOTAL_POINTS = int((TF - T0) / DT)
+
+RNN_BATCH_SIZE = TOTAL_POINTS
+
+assert(RNN_BATCH_SIZE <= TOTAL_POINTS)
 
 def time_plot(t, z, v):
     plt.plot(t, z)
@@ -279,6 +289,7 @@ class Exercise4:
         self.exercise3 = Exercise3()
 
         self.history = self.exercise3.get_noisy_history()
+        self.noisy_history = self.history
 
         # time ti
         in_features = 1
@@ -319,7 +330,8 @@ class Exercise4:
         obs = obs.reshape((-1, 1))
 
         # while not done:
-        for _ in range(COUNT):
+        # for _ in range(COUNT):
+        for _ in tqdm(range(COUNT)):
             # reset optimizer
             opt.zero_grad()
 
@@ -385,6 +397,36 @@ class Exercise5:
     def __init__(self) -> None:
         self.exercise4 = Exercise4()
 
+        self.model_deep = nn.Sequential(
+            nn.Linear(1, 32),
+            nn.Sigmoid(),
+            nn.Linear(32, 32),
+            nn.Sigmoid(),
+            nn.Linear(32, 32),
+            nn.Sigmoid(),
+            nn.Linear(32, 32),
+            nn.Sigmoid(),
+            nn.Linear(32, 2),
+        )
+
+        self.model_wide = nn.Sequential(
+            nn.Linear(1, 128),
+            nn.Sigmoid(),
+            nn.Linear(128, 128),
+            nn.Sigmoid(),
+            nn.Linear(128, 2),
+        )
+
+        self.exercise4.model = self.model_deep
+        self.exercise4.train()
+
+        self.history_deep = self.exercise4.final_prediction()
+
+        self.exercise4.model = self.model_wide
+        self.exercise4.train()
+
+        self.history_wide = self.exercise4.final_prediction()
+
         self.plot()
 
     def final_prediction(self):
@@ -392,7 +434,25 @@ class Exercise5:
         return self.exercise4.final_prediction()
 
     def plot(self):
-        pass
+        # first plot the noisy daata
+        t = self.exercise4.noisy_history['t']
+        noisy_z = self.exercise4.noisy_history['z']
+        noisy_v = self.exercise4.noisy_history['v']
+
+        time_plot(t, noisy_z, noisy_v)
+
+        # now plot the deep and wide predictions
+        t_deep, zi_deep, vi_deep = self.history_deep
+        t_wide, zi_wide, vi_wide = self.history_wide
+
+        time_plot(t_deep, zi_deep, vi_deep)
+        time_plot(t_wide, zi_wide, vi_wide)
+
+        # add title and legend
+        plt.title("Exercise 5: time plot")
+        plt.legend(["Noisy Pos", "Noisy Vel", "Deep NN Pos", "Deep NN Vel", "Wide NN Pos", "Wide NN Vel"])
+
+        plt.show()
 
         
 class Exercise6:
@@ -421,7 +481,7 @@ class Exercise6:
         # length of the velocity
         len_v = 1
 
-        self.batch_size = 1000 # testing
+        self.batch_size = RNN_BATCH_SIZE # testing
 
         in_features = len_z + len_v
 
@@ -429,12 +489,17 @@ class Exercise6:
         out_features = 2 
 
         # residual network, takes as input the current state h = (z, v) in $R^2$ and outputs a vector in $R^2$
+        # make it wide and deep
         self.F_theta = nn.Sequential(
-            nn.Linear(in_features, 32),
+            nn.Linear(in_features, 128),
             nn.Sigmoid(),
-            nn.Linear(32, 32),
+            nn.Linear(128, 128),
             nn.Sigmoid(),
-            nn.Linear(32, out_features),
+            nn.Linear(128, 128),
+            nn.Sigmoid(),
+            nn.Linear(128, 128),
+            nn.Sigmoid(),
+            nn.Linear(128, out_features),
         )
 
         # alias
@@ -454,6 +519,7 @@ class Exercise6:
         h_n = h
 
         n = self.batch_size - 1
+        n = min(n, self.N - 1)
 
         trajectory = [h_n]
 
@@ -470,31 +536,58 @@ class Exercise6:
         trajectory = th.vstack(trajectory)
 
         return trajectory
+    
+    def get_batch(self):
+        length = len(self.history['t'])
+        batch_size = self.batch_size
+
+        max_idx = length - batch_size - 1
+
+        random_idx = np.random.randint(0, max_idx)
+        
+        z0 = self.history['z'][random_idx]
+        v0 = self.history['v'][random_idx]
+
+        h0 = np.array([[z0, v0]])
+        h0 = th.Tensor(h0)
+        h0 = h0.reshape((1, 2))
+
+        #
+        z_gt = self.history['z'][random_idx:random_idx + batch_size]
+        v_gt = self.history['v'][random_idx:random_idx + batch_size]
+        
+        target = np.hstack([z_gt, v_gt])
+        target = th.Tensor(target)
+        target = target.reshape((-1, 2))
+
+        return h0, target
+
 
     def train(self):
         """
         Train by rolling out from the initial condition and minimizing the MSE between the full predicted trajectory and the target trajectory across all time steps
         """
-        opt = th.optim.Adam(self.model.parameters(), lr = 1e-3)
+        opt = th.optim.Adam(self.model.parameters(), lr = LR)
 
         # loop vars
         done = False
 
-        # inital condition
+        # default h0 & target (the whole trajectory)
         h0 = self.system.h0
         h0 = th.Tensor(h0)
         h0 = h0.reshape((1, 2))
 
-
-        # target traj is static
         target = np.hstack([self.history['z'], self.history['v']]) #type:ignore
         target = th.Tensor(target)
         target = target.reshape((-1, 2))
 
-        target = target[:self.batch_size, :]
-
         # while not done:
-        for _ in range(COUNT):
+        # for _ in range(RNN_COUNT):
+        # using tqdm
+        for _ in tqdm(range(RNN_COUNT)):
+            # get batch
+            # h0, target = self.get_batch()
+
             # reset optimizer
             opt.zero_grad()
 
@@ -515,6 +608,10 @@ class Exercise6:
 
         Finally, compare with the previous feedforward network $z_{hat}(t)
         """
+        # hack so I don't have to rewrite rollout_euler
+        self.batch_size = self.N
+
+        #
         clean_history = self.exercise3.clean_history
         dirty_history = self.history
         
@@ -580,11 +677,42 @@ class Exercise7:
         
         self.plot()
 
+    def predict_vector_field(self):
+        # make a grid of points in phase space
+        z = np.linspace(-0.5, 0.5, 20)
+        v = np.linspace(-2, 1, 20)
+
+        Z, V = np.meshgrid(z, v)
+
+        # flatten the grid
+        Z_flat = Z.flatten()
+        V_flat = V.flatten()
+
+        # stack them into (N, 2) shape
+        points = np.hstack([Z_flat.reshape(-1, 1), V_flat.reshape(-1, 1)])
+
+        # convert to tensor
+        points_tensor = th.Tensor(points)
+
+        # predict the vector field at these points
+        with th.no_grad():
+            F_theta_points = self.exercise6.F_theta(points_tensor)
+
+        F_theta_points = F_theta_points.cpu().numpy()
+
+        return Z, V, F_theta_points[:, 0], F_theta_points[:, 1]
+
     def plot(self):
         """
         Plot the learned vector field in phase space by evaluating the neural network $F_{theta}$ on a grid of points and representing the corresponding vectors with arrows (quiver plot).
         """
         h0_0 = self.exercise6.system.h0
+
+        ## vector field plot
+        Z, V, U, W = self.predict_vector_field()
+        plt.quiver(Z, V, U, W)
+        plt.title("Exercise 7: vector field plot")
+        plt.show()
 
         def gaus(std_dev):
             return np.random.normal(0, std_dev, (2, 1))
