@@ -54,6 +54,6 @@ ways to compute:
 
 references:
 "Auxiliary task discovery through generate-and-test"
-"AutoSeM: Automatic Task Selection and Mixing in Multi-Task Learning"
+"AutoSeM: Automatic Task Selection and Mixing in Multi-Task Learning" -- already did it
 https://www.activeloop.ai/resources/glossary/auxiliary-tasks/ 
 """
