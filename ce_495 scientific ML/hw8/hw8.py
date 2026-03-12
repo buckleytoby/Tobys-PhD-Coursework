@@ -15,6 +15,7 @@ import tqdm
 
 PLOT = True
 TEST = False
+DEVICE = 'cuda'
 
 class WaveEquation(nn.Module):
     def __init__(self) -> None:
@@ -47,6 +48,14 @@ class WaveEquation(nn.Module):
         # # initial u0_x, analytical derivative of u0 w.r.t. x
         # u0_x = 2 * th.pi * th.cos(2 * th.pi * self.xs)
         # self.u0_x = u0_x.float()
+        
+        # move everything to device
+        self.to(DEVICE)
+        self.ts = self.ts.to(DEVICE)
+        self.xs = self.xs.to(DEVICE)
+        self.tdomain = self.tdomain.to(DEVICE)
+        self.xdomain = self.xdomain.to(DEVICE)
+        
 
     def reinforce_ics(self):
         # recall, order is (t, x)
@@ -145,11 +154,15 @@ class WaveEquation(nn.Module):
         "use simple finite differences to solve it"
 
         self.optimizer = th.optim.Adam([self.u], lr=1e-2)
-        self.optimizer_prime = th.optim.Adam([self.u_t], lr=1e-2)
+        self.optimizer_prime = th.optim.Adam([self.u_t, self.u_x], lr=1e-2)
+        
+        # to device
+        # self.optimizer = self.optimizer.to(DEVICE)
+        # self.optimizer_prime = self.optimizer_prime.to(DEVICE)
 
         losses = []
 
-        nb_iters = 20000
+        nb_iters = 2500
 
         if TEST:
             nb_iters = 100
@@ -177,16 +190,15 @@ class WaveEquation(nn.Module):
 
         self.plot(losses)
         # self.animate_solution()
-        pass
 
     def plot(self, losses):
         if not PLOT:
             return
         
-        u = self.u.detach().numpy()
+        u = self.u.detach().cpu().numpy()
 
-        tdomain = self.tdomain.numpy()
-        xdomain = self.xdomain.numpy()
+        tdomain = self.tdomain.cpu().numpy()
+        xdomain = self.xdomain.cpu().numpy()
         extent = (tdomain[0], tdomain[1], xdomain[0], xdomain[1])
         # extent = (xdomain[0], xdomain[1], tdomain[0], tdomain[1])
 
@@ -211,8 +223,8 @@ class WaveEquation(nn.Module):
         # ORDER IS (T, X)
         # Prepare data (Time x Space)
         u_data = self.u.detach().cpu().numpy()
-        t_range = self.ts.numpy()
-        x_range = self.xs.numpy()
+        t_range = self.ts.cpu().numpy()
+        x_range = self.xs.cpu().numpy()
         
         fig, ax = plt.subplots()
         
@@ -264,6 +276,8 @@ class PINN(nn.Module):
         self.u = wave_equation.u.detach().clone()
         self.u_t = wave_equation.u_t.detach().clone()
         self.u_x = wave_equation.u_x.detach().clone()
+        self.xs = wave_equation.xs.detach().clone()
+        self.ts = wave_equation.ts.detach().clone()
 
         # totals
         self.total_data_points = self.u.numel()
@@ -274,7 +288,7 @@ class PINN(nn.Module):
         nb_inputs = 2
         nb_outputs = 1
         nb_hidden_features = 128
-        nb_hidden_layers = 5
+        nb_hidden_layers = 10
 
         first_layer = nn.Linear(nb_inputs, nb_hidden_features)
 
@@ -293,13 +307,21 @@ class PINN(nn.Module):
         )
 
         # optimizer
-        self.optimizer = th.optim.Adam(self.parameters(), lr=1e-3)
+        self.optimizer = th.optim.Adam(self.parameters(), lr=5e-4)
 
         # loss
         self.loss_fn = nn.MSELoss()
+        
+        # move everything to device
+        self.to(DEVICE)
+        self.u = self.u.to(DEVICE)
+        self.u_t = self.u_t.to(DEVICE)
+        self.u_x = self.u_x.to(DEVICE)
+        self.xs = self.xs.to(DEVICE)
+        self.ts = self.ts.to(DEVICE)
 
     def run(self):
-        nb_iters = 10000
+        nb_iters = 20000
 
         if TEST:
             nb_iters = 10
@@ -389,6 +411,11 @@ class PINN(nn.Module):
                        self.wave_equation.u[:, -1],
                        self.wave_equation.u
                        ], dim=0).unsqueeze(-1)
+        
+        # move to device
+        t_bc = t_bc.to(DEVICE)
+        x_bc = x_bc.to(DEVICE)
+        u_bc = u_bc.to(DEVICE)
 
 
         # ORDER IS (T, X)
@@ -413,8 +440,8 @@ class PINN(nn.Module):
 
 
         # sample data points
-        ts = self.wave_equation.ts
-        xs = self.wave_equation.xs
+        ts = self.ts
+        xs = self.xs
 
         # randomly choose some
         t_choices = np.random.choice(ts.shape[0], size=batch_size, replace=True)
@@ -473,20 +500,22 @@ class PINN(nn.Module):
 
         # plot the final solution
         with th.no_grad():
-            ts = self.wave_equation.ts
-            xs = self.wave_equation.xs
+            ts = self.ts
+            xs = self.xs
 
             t_grid, x_grid = th.meshgrid(ts, xs, indexing='ij')
             sample = th.stack([t_grid.flatten(), x_grid.flatten()], dim=-1)
+            
+            u_pred = self.model(sample).cpu().numpy()
 
-            u_pred = self.model(sample).reshape(t_grid.shape)
+            u_pred = u_pred.reshape(t_grid.shape)
 
-            tdomain = self.wave_equation.tdomain.numpy()
-            xdomain = self.wave_equation.xdomain.numpy()
+            tdomain = self.wave_equation.tdomain.cpu().numpy()
+            xdomain = self.wave_equation.xdomain.cpu().numpy()
             extent = (tdomain[0], tdomain[1], xdomain[0], xdomain[1])
 
             plt.figure()
-            plt.imshow(u_pred.detach().numpy().T, extent=extent, origin='lower', aspect='auto')
+            plt.imshow(u_pred.T, extent=extent, origin='lower', aspect='auto')
             plt.colorbar(label='u(t, x)')
             plt.xlabel('t')
             plt.ylabel('x')
@@ -494,8 +523,8 @@ class PINN(nn.Module):
             plt.show()
 
             # compute the error compared to the finite difference solution
-            u_gt = self.u.detach()
-            error = th.mean(th.square(u_pred - u_gt)).item()
+            u_gt = self.u.detach().cpu().numpy()
+            error = np.mean(np.square(u_pred - u_gt))
             print(f"Mean squared error compared to finite difference solution: {error:.4f}")
 
         # plot loss over time
