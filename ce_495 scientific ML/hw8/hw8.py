@@ -369,14 +369,26 @@ class PINN(nn.Module):
         # sample BC points
         # just get all of them
 
-        # (t=0, x) + (t, x=0) + (t, x=-1)
-        x_bc = th.cat([self.wave_equation.xs, self.wave_equation.xs[0].unsqueeze(0).repeat(self.wave_equation.ts.shape[0]), self.wave_equation.xs[-1].unsqueeze(0).repeat(self.wave_equation.ts.shape[0])], dim=0)
+        # (t=0, x) + (t, x=0) + (t, x=-1) + (t=-1, x)
+        x_bc = th.cat([self.wave_equation.xs, 
+                       self.wave_equation.xs[0].unsqueeze(0).repeat(self.wave_equation.ts.shape[0]), 
+                       self.wave_equation.xs[-1].unsqueeze(0).repeat(self.wave_equation.ts.shape[0]),
+                       self.wave_equation.xs,
+                      ], dim=0)
 
-        # (t=0, x) + (t, x=0) + (t, x=-1)
-        t_bc = th.cat([self.wave_equation.ts[0].unsqueeze(0).repeat(self.wave_equation.xs.shape[0]), self.wave_equation.ts, self.wave_equation.ts], dim=0)
+        # (t=0, x) + (t, x=0) + (t, x=-1) + (t=-1, x)
+        t_bc = th.cat([self.wave_equation.ts[0].unsqueeze(0).repeat(self.wave_equation.xs.shape[0]),
+                        self.wave_equation.ts, 
+                        self.wave_equation.ts, 
+                        self.wave_equation.ts[-1].unsqueeze(0).repeat(self.wave_equation.xs.shape[0]),
+                        ], dim=0)
 
-        # (t=0, x) + (t, x=0) + (t, x=-1)
-        u_bc = th.cat([self.wave_equation.u[0, :], self.wave_equation.u[:, 0], self.wave_equation.u[:, -1]], dim=0).unsqueeze(-1)
+        # (t=0, x) + (t, x=0) + (t, x=-1) + (t=-1, x)
+        u_bc = th.cat([self.wave_equation.u[0, :], 
+                       self.wave_equation.u[:, 0], 
+                       self.wave_equation.u[:, -1],
+                       self.wave_equation.u
+                       ], dim=0).unsqueeze(-1)
 
 
         # ORDER IS (T, X)
