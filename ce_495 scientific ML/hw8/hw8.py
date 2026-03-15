@@ -15,7 +15,7 @@ import tqdm
 
 PLOT = True
 TEST = False
-DEVICE = 'cuda'
+DEVICE = 'cpu'
 
 class WaveEquation(nn.Module):
     def __init__(self) -> None:
@@ -287,8 +287,8 @@ class PINN(nn.Module):
 
         nb_inputs = 2
         nb_outputs = 1
-        nb_hidden_features = 128
-        nb_hidden_layers = 10
+        nb_hidden_features = 64
+        nb_hidden_layers = 5
 
         first_layer = nn.Linear(nb_inputs, nb_hidden_features)
 
@@ -321,7 +321,7 @@ class PINN(nn.Module):
         self.ts = self.ts.to(DEVICE)
 
     def run(self):
-        nb_iters = 20000
+        nb_iters = 10000
 
         if TEST:
             nb_iters = 10
@@ -409,7 +409,7 @@ class PINN(nn.Module):
         u_bc = th.cat([self.wave_equation.u[0, :], 
                        self.wave_equation.u[:, 0], 
                        self.wave_equation.u[:, -1],
-                       self.wave_equation.u
+                       self.wave_equation.u[-1, :],
                        ], dim=0).unsqueeze(-1)
         
         # move to device
