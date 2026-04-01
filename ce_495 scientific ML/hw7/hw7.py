@@ -66,6 +66,8 @@ class Pendulum:
         plt.grid()
         plt.show()
 
+        pass
+
 
 
 class Problem2:
@@ -527,7 +529,7 @@ class Problem3:
 
 
 if __name__ == "__main__":
-    # pendulum = Pendulum()
-    # pendulum.generate()
+    pendulum = Pendulum()
+    pendulum.generate()
     p2 = Problem2()
     p3 = Problem3(p2)

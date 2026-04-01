@@ -20,6 +20,10 @@ https://github.com/rtqichen/torchdiffeq
 import torch as th
 from torch import nn
 
+import diffusion_policy.globals as globals
+from diffusion_policy.common.replay_buffer import (
+    ReplayBuffer,
+)
 
 # params
 NB_INPUTS = 10
