@@ -31,3 +31,8 @@ me_449/asst6/buckley_toby_asst6.pdf
 .DS_Store
 .DS_Store
 .DS_Store
+data/MNIST/raw/t10k-images-idx3-ubyte
+
+data/
+metrics/
+metrics_grid/
